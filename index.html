@@ -19,7 +19,7 @@
 <div id="output"></div>
 <div id="input-area">
     <span>&gt;&nbsp;</span>
-    <input type="text" id="cmd" autofocus autocomplete="off" placeholder="Start Time...">
+    <input type="text" id="cmd" autofocus autocomplete="off" placeholder="Start Time (or Enter for now)...">
 </div>
 
 <script>
@@ -58,21 +58,18 @@
             }
 
             if (step === 0 && val.toLowerCase() === 'export') {
-                // Correctly map pipe-separated data to CSV columns[span_3](start_span)[span_3](end_span)
                 let csvContent = "Start,Task,Detail,Adjustment,End\n";
                 csvContent += saved.map(line => {
-                    // Logic to split correctly regardless of whether Adj field exists[span_4](start_span)[span_4](end_span)
                     let parts = line.split(' | ');
                     let start = parts[0];
                     let task = parts[1];
                     let detail = parts[2];
                     let adj = "";
                     let end = "";
-                    
-                    if (parts.length === 5) { // With Adj: [Start, Task, Detail, Adj, End][span_5](start_span)[span_5](end_span)
+                    if (parts.length === 5) {
                         adj = parts[3].replace('Adj: ', '');
                         end = parts[4].replace('End: ', '');
-                    } else { // Without Adj: [Start, Task, Detail, End][span_6](start_span)[span_6](end_span)
+                    } else {
                         end = parts[3].replace('End: ', '');
                     }
                     return `${start},${task},${detail},${adj},${end}`;
@@ -89,18 +86,23 @@
                 return;
             }
 
-            if (!val && step < 3) return;
-
+            // Step 0: Handle empty input by grabbing current time
             if (step === 0) {
-                entry.start = val.replace(/;/g, ':');
+                if (val === "") {
+                    entry.start = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: false });
+                } else {
+                    entry.start = val.replace(/;/g, ':');
+                }
                 step++;
                 input.placeholder = prompts[step];
             } else if (step === 1) {
+                if (!val) return;
                 entry.desc = val;
                 isInventory = /^\d+$/.test(val);
                 step++;
                 input.placeholder = isInventory ? "Actual Count:" : prompts[step];
             } else if (step === 2) {
+                if (!val) return;
                 entry.note = val;
                 if (isInventory && parseInt(entry.desc) !== parseInt(val)) {
                     output.innerHTML += `<div>> Detail: ${val}</div><div class="error">[ERROR] Deviation detected!</div>`;
