@@ -58,8 +58,15 @@
             }
 
             if (step === 0 && val.toLowerCase() === 'export') {
-                const csvContent = "data:text/csv;charset=utf-8," + saved.join("\n");
-                const encodedUri = encodeURI(csvContent);
+                // Convert stored pipe-separated entries to true CSV format for export[span_1](start_span)[span_1](end_span)
+                let csvContent = "Start,Task,Detail,Adjustment,End\n";
+                csvContent += saved.map(line => {
+                    return line.replace(/\s\|\sAdj:\s/g, ',')
+                               .replace(/\s\|\s/g, ',')
+                               .replace('End: ', '');
+                }).join("\n");
+                
+                const encodedUri = encodeURI("data:text/csv;charset=utf-8," + csvContent);
                 const link = document.createElement("a");
                 link.setAttribute("href", encodedUri);
                 link.setAttribute("download", "termitask_export.csv");
@@ -101,7 +108,6 @@
     });
 
     function saveEntry() {
-        // Set hour12 to false for 24-hour time format[span_1](start_span)[span_1](end_span)
         const timestamp = new Date().toLocaleTimeString([], { hour12: false });
         const finalEntry = `${entry.start} | ${entry.desc} | ${entry.note} ${entry.adj ? '| Adj: ' + entry.adj : ''} | End: ${timestamp}`;
         
