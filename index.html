@@ -28,6 +28,7 @@
     let step = 0;
     let entry = {};
     let isInventory = false;
+    let awaitingConfirmation = false;
     const prompts = ["Start Time:", "Task:", "Detail:"];
 
     let saved = JSON.parse(localStorage.getItem('tasks') || '[]');
@@ -36,13 +37,25 @@
     input.addEventListener('keydown', (e) => {
         if (e.key === 'Enter') {
             const val = input.value.trim();
-            if (val.toLowerCase() === 'clear') {
-                localStorage.removeItem('tasks');
-                output.innerHTML = '';
-                saved = [];
-                input.value = '';
-                step = 0;
+
+            // Handle Confirmation Logic
+            if (awaitingConfirmation) {
+                if (val.toLowerCase() === 'y') {
+                    localStorage.removeItem('tasks');
+                    output.innerHTML = '';
+                    saved = [];
+                }
+                awaitingConfirmation = false;
                 input.placeholder = prompts[0];
+                input.value = '';
+                return;
+            }
+
+            // Trigger Confirmation
+            if (val.toLowerCase() === 'clear') {
+                output.innerHTML += `<div>> clear</div><div>Confirm clear all data? (y/n)</div>`;
+                awaitingConfirmation = true;
+                input.value = '';
                 return;
             }
 
@@ -54,14 +67,14 @@
                 input.placeholder = prompts[step];
             } else if (step === 1) {
                 entry.desc = val;
-                isInventory = /^\d+$/.test(val); // Check if Task is integer
+                isInventory = /^\d+$/.test(val);
                 step++;
                 input.placeholder = isInventory ? "Actual Count:" : prompts[step];
             } else if (step === 2) {
                 entry.note = val;
                 if (isInventory && parseInt(entry.desc) !== parseInt(val)) {
                     output.innerHTML += `<div>> Detail: ${val}</div><div class="error">[ERROR] Deviation detected!</div>`;
-                    step = 3; // Jump to adjustment
+                    step = 3;
                     input.placeholder = "Adjustment:";
                 } else {
                     saveEntry();
