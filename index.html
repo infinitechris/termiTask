@@ -73,7 +73,6 @@
             if (!val && step < 3) return;
 
             if (step === 0) {
-                // Correctly replace all semicolons with colons
                 entry.start = val.replace(/;/g, ':');
                 step++;
                 input.placeholder = prompts[step];
@@ -102,7 +101,8 @@
     });
 
     function saveEntry() {
-        const timestamp = new Date().toLocaleTimeString();
+        // Set hour12 to false for 24-hour time format[span_1](start_span)[span_1](end_span)
+        const timestamp = new Date().toLocaleTimeString([], { hour12: false });
         const finalEntry = `${entry.start} | ${entry.desc} | ${entry.note} ${entry.adj ? '| Adj: ' + entry.adj : ''} | End: ${timestamp}`;
         
         output.innerHTML += `<div class="log-entry">[SAVED] ${finalEntry}</div>`;
