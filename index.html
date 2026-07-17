@@ -32,13 +32,13 @@
     const prompts = ["Start Time:", "Task:", "Detail:"];
 
     let saved = JSON.parse(localStorage.getItem('tasks') || '[]');
-    saved.forEach(s => output.innerHTML += `<div class="log-entry">${s}</div>`);
+    saved.forEach(s => output.innerHTML += `<div class="log-entry">[SAVED] ${s}</div>`);
 
     input.addEventListener('keydown', (e) => {
         if (e.key === 'Enter') {
             const val = input.value.trim();
 
-            // Handle Confirmation Logic
+            // Handle Confirmation Logic for 'clear'
             if (awaitingConfirmation) {
                 if (val.toLowerCase() === 'y') {
                     localStorage.removeItem('tasks');
@@ -51,10 +51,24 @@
                 return;
             }
 
-            // Trigger Confirmation
+            // Trigger Confirmation for 'clear'
             if (val.toLowerCase() === 'clear') {
                 output.innerHTML += `<div>> clear</div><div>Confirm clear all data? (y/n)</div>`;
                 awaitingConfirmation = true;
+                input.value = '';
+                return;
+            }
+
+            // Export to CSV
+            if (step === 0 && val.toLowerCase() === 'export') {
+                const csvContent = "data:text/csv;charset=utf-8," + saved.join("\\n");
+                const encodedUri = encodeURI(csvContent);
+                const link = document.createElement("a");
+                link.setAttribute("href", encodedUri);
+                link.setAttribute("download", "termitask_export.csv");
+                document.body.appendChild(link);
+                link.click();
+                link.remove();
                 input.value = '';
                 return;
             }
@@ -91,9 +105,9 @@
 
     function saveEntry() {
         const timestamp = new Date().toLocaleTimeString();
-        let finalEntry = `${entry.start} | ${entry.desc} | ${entry.note}`;
-        if (entry.adj) finalEntry += ` | Adj: ${entry.adj}`;
-        finalEntry += ` | End: ${timestamp}`;
+        let finalEntry = `${entry.start},${entry.desc},${entry.note}`;
+        if (entry.adj) finalEntry += `,${entry.adj}`;
+        finalEntry += `,${timestamp}`;
         
         output.innerHTML += `<div class="log-entry">[SAVED] ${finalEntry}</div>`;
         saved.push(finalEntry);
