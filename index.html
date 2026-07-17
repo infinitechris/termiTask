@@ -8,9 +8,10 @@
     <link rel="manifest" href='data:application/manifest+json,{"name":"TermiTask","short_name":"TermiTask","start_url":"./index.html","display":"standalone","background_color":"#000000","theme_color":"#000000"}'>
     <style>
         body { background: #0a0a0a; color: #00ff00; font-family: "Courier New", monospace; margin: 0; padding: 15px; }
-        #output { margin-bottom: 20px; }
-        .log-entry { margin-bottom: 10px; border-bottom: 1px solid #1a1a1a; padding-bottom: 5px; }
-        #input-area { display: flex; align-items: center; position: fixed; bottom: 20px; width: 90%; }
+        /* Added user-select to make text selectable on mobile */
+        #output { margin-bottom: 60px; user-select: text; -webkit-user-select: text; }
+        .log-entry { margin-bottom: 10px; border-bottom: 1px solid #1a1a1a; padding-bottom: 5px; cursor: text; }
+        #input-area { display: flex; align-items: center; position: fixed; bottom: 20px; width: 90%; background: #0a0a0a; }
         input { background: transparent; border: none; color: #00ff00; font: inherit; width: 100%; outline: none; }
     </style>
 </head>
@@ -30,12 +31,23 @@
     const prompts = ["Start Time:", "Task:", "Detail:"];
 
     // Load existing data
-    const saved = JSON.parse(localStorage.getItem('tasks') || '[]');
+    let saved = JSON.parse(localStorage.getItem('tasks') || '[]');
     saved.forEach(s => output.innerHTML += `<div class="log-entry">${s}</div>`);
 
     input.addEventListener('keydown', (e) => {
         if (e.key === 'Enter') {
             const val = input.value.trim();
+            
+            // Clear Data command
+            if (val.toLowerCase() === 'clear') {
+                localStorage.removeItem('tasks');
+                output.innerHTML = '';
+                saved = [];
+                input.value = '';
+                input.placeholder = prompts[0];
+                return;
+            }
+
             if (!val && step < 3) return;
 
             if (step < 3) {
