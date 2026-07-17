@@ -1,0 +1,75 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>TermiTask</title>
+    <!-- Embedding Manifest -->
+    <link rel="manifest" href='data:application/manifest+json,{"name":"TermiTask","short_name":"TermiTask","start_url":"./index.html","display":"standalone","background_color":"#000000","theme_color":"#000000"}'>
+    <style>
+        body { background: #0a0a0a; color: #00ff00; font-family: "Courier New", monospace; margin: 0; padding: 15px; }
+        #output { margin-bottom: 20px; }
+        .log-entry { margin-bottom: 10px; border-bottom: 1px solid #1a1a1a; padding-bottom: 5px; }
+        #input-area { display: flex; align-items: center; position: fixed; bottom: 20px; width: 90%; }
+        input { background: transparent; border: none; color: #00ff00; font: inherit; width: 100%; outline: none; }
+    </style>
+</head>
+<body>
+
+<div id="output"></div>
+<div id="input-area">
+    <span>&gt;&nbsp;</span>
+    <input type="text" id="cmd" autofocus autocomplete="off" placeholder="Start Time...">
+</div>
+
+<script>
+    const output = document.getElementById('output');
+    const input = document.getElementById('cmd');
+    let step = 0;
+    let entry = {};
+    const prompts = ["Start Time:", "Task:", "Detail:"];
+
+    // Load existing data
+    const saved = JSON.parse(localStorage.getItem('tasks') || '[]');
+    saved.forEach(s => output.innerHTML += `<div class="log-entry">${s}</div>`);
+
+    input.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter') {
+            const val = input.value.trim();
+            if (!val && step < 3) return;
+
+            if (step < 3) {
+                output.innerHTML += `<div>> ${prompts[step]} ${val}</div>`;
+                if (step === 0) entry.start = val;
+                else if (step === 1) entry.desc = val;
+                else if (step === 2) entry.note = val;
+                step++;
+                input.placeholder = step < 3 ? prompts[step] : "Press Enter to timestamp end...";
+            } else {
+                // 4th step: Timestamp and Save
+                const timestamp = new Date().toLocaleTimeString();
+                const finalEntry = `${entry.start} | ${entry.desc} | ${entry.note} | End: ${timestamp}`;
+                output.innerHTML += `<div class="log-entry">[SAVED] ${finalEntry}</div>`;
+                
+                // Persistence
+                saved.push(finalEntry);
+                localStorage.setItem('tasks', JSON.stringify(saved));
+                
+                // Reset
+                step = 0;
+                entry = {};
+                input.placeholder = prompts[0];
+            }
+            input.value = '';
+            window.scrollTo(0, document.body.scrollHeight);
+        }
+    });
+
+    // PWA Service Worker (Embedded)
+    if ('serviceWorker' in navigator) {
+        const swBlob = new Blob(['self.addEventListener("fetch", () => {});'], {type: 'text/javascript'});
+        navigator.serviceWorker.register(URL.createObjectURL(swBlob));
+    }
+</script>
+</body>
+</html>
