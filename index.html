@@ -6,16 +6,18 @@
     <title>TermiTask</title>
     <link rel="manifest" href='data:application/manifest+json,{"name":"TermiTask","short_name":"TermiTask","start_url":"./index.html","display":"standalone","background_color":"#000000","theme_color":"#000000"}'>
     <style>
-        body { background: #0a0a0a; color: #00ff00; font-family: "Courier New", monospace; margin: 0; padding: 15px; }
+        body { background: #0a0a0a; color: #00ff00; font-family: "Courier New", monospace; margin: 0; padding: 15px; overflow-x: hidden; }
         #output { margin-bottom: 60px; user-select: text; -webkit-user-select: text; }
         .log-entry { margin-bottom: 10px; border-bottom: 1px solid #1a1a1a; padding-bottom: 5px; cursor: text; }
         .error { color: #ff0000; }
-        #input-area { display: flex; align-items: center; position: fixed; bottom: 20px; width: 90%; background: #0a0a0a; }
+        #input-area { display: flex; align-items: center; position: fixed; bottom: 20px; width: 90%; background: #0a0a0a; z-index: 10; }
         input { background: transparent; border: none; color: #00ff00; font: inherit; width: 100%; outline: none; }
+        #matrix-canvas { position: fixed; top: 0; left: 0; width: 100%; height: 100%; z-index: 5; display: none; background: #000; }
     </style>
 </head>
 <body>
 
+<canvas id="matrix-canvas"></canvas>
 <div id="output"></div>
 <div id="input-area">
     <span>&gt;&nbsp;</span>
@@ -25,10 +27,13 @@
 <script>
     const output = document.getElementById('output');
     const input = document.getElementById('cmd');
+    const canvas = document.getElementById('matrix-canvas');
+    const ctx = canvas.getContext('2d');
     let step = 0;
     let entry = {};
     let isInventory = false;
     let awaitingConfirmation = false;
+    let matrixInterval = null;
     const prompts = ["Start Time:", "Task:", "Detail:"];
 
     let saved = JSON.parse(localStorage.getItem('tasks') || '[]');
@@ -53,6 +58,20 @@
             if (val.toLowerCase() === 'clear') {
                 output.innerHTML += `<div>> clear</div><div>Confirm clear all data? (y/n)</div>`;
                 awaitingConfirmation = true;
+                input.value = '';
+                return;
+            }
+
+            if (val.toLowerCase() === 'matrix') {
+                startMatrix();
+                input.value = '';
+                return;
+            }
+
+            if (val.toLowerCase() === 'stats') {
+                const total = saved.length;
+                const inventory = saved.filter(s => s.includes('|')).length;
+                output.innerHTML += `<div>> stats</div><div>Total Entries: ${total} | Inventory Tasks: ${inventory}</div>`;
                 input.value = '';
                 return;
             }
@@ -124,16 +143,36 @@
     function saveEntry() {
         const timestamp = new Date().toLocaleTimeString([], { hour12: false });
         const finalEntry = `${entry.start} | ${entry.desc} | ${entry.note} ${entry.adj ? '| Adj: ' + entry.adj : ''} | End: ${timestamp}`;
-        
         output.innerHTML += `<div class="log-entry">[SAVED] ${finalEntry}</div>`;
         saved.push(finalEntry);
         localStorage.setItem('tasks', JSON.stringify(saved));
-        
         step = 0;
         entry = {};
         isInventory = false;
         input.placeholder = prompts[0];
     }
+
+    function startMatrix() {
+        canvas.style.display = 'block';
+        canvas.width = window.innerWidth;
+        canvas.height = window.innerHeight;
+        const drops = Array(Math.floor(canvas.width / 20)).fill(1);
+        matrixInterval = setInterval(() => {
+            ctx.fillStyle = 'rgba(0, 0, 0, 0.05)';
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+            ctx.fillStyle = '#0F0';
+            drops.forEach((drop, i) => {
+                ctx.fillText(String.fromCharCode(0x30A0 + Math.random() * 96), i * 20, drop * 20);
+                if (drop * 20 > canvas.height && Math.random() > 0.975) drops[i] = 0;
+                drops[i]++;
+            });
+        }, 33);
+    }
+
+    canvas.addEventListener('click', () => {
+        clearInterval(matrixInterval);
+        canvas.style.display = 'none';
+    });
 
     if ('serviceWorker' in navigator) {
         const swBlob = new Blob(['self.addEventListener("fetch", () => {});'], {type: 'text/javascript'});
