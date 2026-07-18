@@ -38,11 +38,9 @@
     const progressBar = document.getElementById('progress-bar');
     const canvas = document.getElementById('matrix-canvas');
     const ctx = canvas.getContext('2d');
-    let step = 0;
-    let entry = {};
-    let isInventory = false;
-    let awaitingConfirmation = false;
-    let matrixInterval = null;
+    let step = 0; let entry = {}; let isInventory = false; let awaitingConfirmation = false;
+    let matrixInterval = null; let gameActive = false;
+    let botY = 0; let velY = 0; let score = 0; let hurdles = [];
     const prompts = ["Start Time:", "Task:", "Detail:"];
 
     let saved = JSON.parse(localStorage.getItem('tasks') || '[]');
@@ -56,16 +54,10 @@
         const timeVal = now.getHours() * 60 + now.getMinutes();
         const startMorning = 480, endMorning = 690, startAfternoon = 750, endAfternoon = 990;
         let percent = 0;
-
-        if (timeVal >= startMorning && timeVal <= endMorning) {
-            percent = ((timeVal - startMorning) / (endMorning - startMorning)) * 100;
-        } else if (timeVal > endMorning && timeVal < startAfternoon) {
-            percent = 100;
-        } else if (timeVal >= startAfternoon && timeVal <= endAfternoon) {
-            percent = 100 - (((timeVal - startAfternoon) / (endAfternoon - startAfternoon)) * 100);
-        } else if (timeVal > endAfternoon) {
-            percent = 0;
-        }
+        if (timeVal >= startMorning && timeVal <= endMorning) percent = ((timeVal - startMorning) / (endMorning - startMorning)) * 100;
+        else if (timeVal > endMorning && timeVal < startAfternoon) percent = 100;
+        else if (timeVal >= startAfternoon && timeVal <= endAfternoon) percent = 100 - (((timeVal - startAfternoon) / (endAfternoon - startAfternoon)) * 100);
+        else if (timeVal > endAfternoon) percent = 0;
         progressBar.style.width = `${Math.min(100, Math.max(0, percent))}%`;
     }
 
@@ -78,7 +70,9 @@
             }
             if (val.toLowerCase() === 'clear') { output.innerHTML += `<div>> clear</div><div>Confirm clear all data? (y/n)</div>`; awaitingConfirmation = true; input.value = ''; return; }
             if (val.toLowerCase() === 'matrix') { startMatrix(); input.value = ''; return; }
+            if (val.toLowerCase() === 'botjump') { startBotJump(); input.value = ''; return; }
             if (val.toLowerCase() === 'stats') { const total = saved.length; const inv = saved.filter(s => s.includes('|')).length; output.innerHTML += `<div>> stats</div><div>Total Entries: ${total} | Inventory Tasks: ${inv}</div>`; input.value = ''; return; }
+            
             if (step === 0 && val.toLowerCase() === 'export') {
                 const isoTimestamp = new Date().toISOString().replace(/[:.]/g, '-').slice(0, 19);
                 let csvContent = "Start,Task,Detail,Adjustment,End\n" + saved.map(line => {
@@ -119,8 +113,29 @@
             drops.forEach((drop, i) => { ctx.fillText(String.fromCharCode(0x30A0 + Math.random() * 96), i * 20, drop * 20); if (drop * 20 > canvas.height && Math.random() > 0.975) drops[i] = 0; drops[i]++; });
         }, 33);
     }
-    canvas.addEventListener('click', () => { clearInterval(matrixInterval); canvas.style.display = 'none'; });
-    if ('serviceWorker' in navigator) { const swBlob = new Blob(['self.addEventListener("fetch", () => {});'], {type: 'text/javascript'}); navigator.serviceWorker.register(URL.createObjectURL(swBlob)); }
+
+    function startBotJump() {
+        gameActive = true; botY = 0; velY = 0; score = 0; hurdles = [];
+        canvas.style.display = 'block'; canvas.width = window.innerWidth; canvas.height = window.innerHeight;
+        let gameLoop = setInterval(() => {
+            if (!gameActive) { clearInterval(gameLoop); return; }
+            velY += 1.2; botY += velY; if (botY > 0) { botY = 0; velY = 0; }
+            ctx.fillStyle = '#000'; ctx.fillRect(0, 0, canvas.width, canvas.height);
+            ctx.fillStyle = '#00ff00'; ctx.font = '20px Courier New';
+            ctx.fillText('[o]', 50, canvas.height - 50 + botY);
+            if (Math.random() < 0.03) hurdles.push({ x: canvas.width, h: Math.floor(Math.random() * 2) + 1 });
+            hurdles.forEach((h, i) => {
+                h.x -= 10; ctx.fillText('#'.repeat(h.h), h.x, canvas.height - 50);
+                if (h.x < 70 && h.x > 30 && botY > -20 * h.h) { gameActive = false; output.innerHTML += `<div>[SYSTEM] GAME OVER. Score: ${score}</div>`; }
+                if (h.x < 0) { hurdles.splice(i, 1); score++; }
+            });
+        }, 33);
+    }
+
+    canvas.addEventListener('click', () => {
+        if (gameActive) velY = -15;
+        else { clearInterval(matrixInterval); canvas.style.display = 'none'; }
+    });
 </script>
 </body>
 </html>
