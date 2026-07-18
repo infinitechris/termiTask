@@ -95,7 +95,9 @@
                 entry.start = val === "" ? new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: false }) : val;
                 step = 1; input.placeholder = "Task:"; activeText.innerText = `Active: ${entry.start} | Task?`;
             } else if (step === 1) {
-                entry.desc = val; step = 2; input.placeholder = "Detail:"; activeText.innerText = `Active: ${entry.start} | ${val} | Detail?`;
+                entry.desc = val; step = 2; 
+                input.placeholder = /^\d+$/.test(val) ? "Detail (Product):" : "Detail:"; 
+                activeText.innerText = `Active: ${entry.start} | ${val} | Detail?`;
             } else if (step === 2) {
                 const end = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: false });
                 const entryStr = `${entry.start} | ${entry.desc} | ${val} | End: ${end}`;
