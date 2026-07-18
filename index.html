@@ -72,9 +72,6 @@
             const link = document.createElement("a"); link.href = "data:text/csv;charset=utf-8," + encodeURI(csv); link.download = `tasks_${iso}.csv`; link.click();
         } else if (val.toLowerCase() === 'clear') {
             if (confirm("Clear all data?")) { localStorage.removeItem('tasks'); saved = []; output.innerHTML = ''; }
-        } else if (step === 0 && (val.toLowerCase() === 't' || val.toLowerCase() === 'c')) {
-            orderMode = true; subStep = 1; currentOrder = { type: val.toLowerCase() === 't' ? 'Tech' : 'Contractor', totalQty: 0, start: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: false }) };
-            output.innerHTML += `<div>> ${val}</div><div>[SYSTEM] Enter ${currentOrder.type === 'Tech' ? 'Order #:' : 'Contractor Name:'}</div>`; input.placeholder = "ID/Name:";
         } else if (val.toLowerCase() === 'stats') {
             let totalPieces = 0, totalMinutes = 0, summary = {};
             saved.forEach(s => {
@@ -89,8 +86,23 @@
                 }
             });
             output.innerHTML += `<div>> stats</div><div>Total Pieces: ${totalPieces} | Total Time: ${totalMinutes} mins</div><div>Breakdown:</div>` + Object.entries(summary).map(e => `<div>- ${e[0]}: ${e[1]}</div>`).join('');
-        } else if (val.toLowerCase() === 'matrix') { startMatrix(); } else if (val.toLowerCase() === 'botjump') { startBotJump(); } else if (val.toLowerCase() === 'weather') { showWeather(); } else {
-            entry.start = val === "" ? new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: false }) : val; step = 1; input.placeholder = "Task:"; activeText.innerText = `Active: ${entry.start} | Task?`;
+        } else if (val.toLowerCase() === 'matrix') { startMatrix(); } else if (val.toLowerCase() === 'botjump') { startBotJump(); } else if (val.toLowerCase() === 'weather') { showWeather(); }
+        else if (step === 0 && (val.toLowerCase() === 't' || val.toLowerCase() === 'c')) {
+            orderMode = true; subStep = 1; currentOrder = { type: val.toLowerCase() === 't' ? 'Tech' : 'Contractor', totalQty: 0, start: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: false }) };
+            output.innerHTML += `<div>> ${val}</div><div>[SYSTEM] Enter ${currentOrder.type === 'Tech' ? 'Order #:' : 'Contractor Name:'}</div>`; input.placeholder = "ID/Name:";
+        } else {
+            if (step === 0) {
+                entry.start = val === "" ? new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: false }) : val;
+                step = 1; input.placeholder = "Task:"; activeText.innerText = `Active: ${entry.start} | Task?`;
+            } else if (step === 1) {
+                entry.desc = val; step = 2; input.placeholder = "Detail:"; activeText.innerText = `Active: ${entry.start} | ${val} | Detail?`;
+            } else if (step === 2) {
+                const end = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: false });
+                const entryStr = `${entry.start} | ${entry.desc} | ${val} | End: ${end}`;
+                output.innerHTML += `<div class="log-entry">[SAVED] ${entryStr}</div>`;
+                saved.push(entryStr); localStorage.setItem('tasks', JSON.stringify(saved));
+                step = 0; entry = {}; input.placeholder = "Start Time..."; activeText.innerText = "System Ready";
+            }
         }
         input.value = ''; window.scrollTo(0, document.body.scrollHeight);
     });
