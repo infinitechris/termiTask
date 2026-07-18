@@ -66,6 +66,12 @@
                     orderMode = false; subStep = 0; input.placeholder = "Start Time..."; activeText.innerText = "System Ready";
                 } else if (!isNaN(parseInt(val))) { currentOrder.totalQty += parseInt(val); output.innerHTML += `<div>> ${val}</div>`; activeText.innerText = `Order: ${currentOrder.id} | Total: ${currentOrder.totalQty}`; }
             }
+        } else if (val.toLowerCase() === 'export') {
+            const iso = new Date().toISOString().replace(/[:.]/g, '-').slice(0, 19);
+            const csv = "Start,Task,Detail,End\n" + saved.map(s => s.replace(/ \| /g, ',')).join("\n");
+            const link = document.createElement("a"); link.href = "data:text/csv;charset=utf-8," + encodeURI(csv); link.download = `tasks_${iso}.csv`; link.click();
+        } else if (val.toLowerCase() === 'clear') {
+            if (confirm("Clear all data?")) { localStorage.removeItem('tasks'); saved = []; output.innerHTML = ''; }
         } else if (step === 0 && (val.toLowerCase() === 't' || val.toLowerCase() === 'c')) {
             orderMode = true; subStep = 1; currentOrder = { type: val.toLowerCase() === 't' ? 'Tech' : 'Contractor', totalQty: 0, start: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: false }) };
             output.innerHTML += `<div>> ${val}</div><div>[SYSTEM] Enter ${currentOrder.type === 'Tech' ? 'Order #:' : 'Contractor Name:'}</div>`; input.placeholder = "ID/Name:";
