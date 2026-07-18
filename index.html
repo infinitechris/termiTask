@@ -7,6 +7,7 @@
     <link rel="manifest" href='data:application/manifest+json,{"name":"TermiTask","short_name":"TermiTask","start_url":"./index.html","display":"standalone","background_color":"#000000","theme_color":"#000000"}'>
     <style>
         body { background: #0a0a0a; color: #00ff00; font-family: "Courier New", monospace; margin: 0; padding: 15px; overflow-x: hidden; }
+        #status-bar { color: #555; font-size: 0.8em; margin-bottom: 10px; border-bottom: 1px solid #1a1a1a; padding-bottom: 5px; height: 1.2em; }
         #output { margin-bottom: 60px; user-select: text; -webkit-user-select: text; }
         .log-entry { margin-bottom: 10px; border-bottom: 1px solid #1a1a1a; padding-bottom: 5px; cursor: text; }
         .error { color: #ff0000; }
@@ -18,6 +19,7 @@
 <body>
 
 <canvas id="matrix-canvas"></canvas>
+<div id="status-bar">System Ready</div>
 <div id="output"></div>
 <div id="input-area">
     <span>&gt;&nbsp;</span>
@@ -27,6 +29,7 @@
 <script>
     const output = document.getElementById('output');
     const input = document.getElementById('cmd');
+    const statusBar = document.getElementById('status-bar');
     const canvas = document.getElementById('matrix-canvas');
     const ctx = canvas.getContext('2d');
     let step = 0;
@@ -51,6 +54,7 @@
                 }
                 awaitingConfirmation = false;
                 input.placeholder = prompts[0];
+                statusBar.innerText = "System Ready";
                 input.value = '';
                 return;
             }
@@ -114,12 +118,14 @@
                 }
                 step++;
                 input.placeholder = prompts[step];
+                statusBar.innerText = `Active: ${entry.start} | Task?`;
             } else if (step === 1) {
                 if (!val) return;
                 entry.desc = val;
                 isInventory = /^\d+$/.test(val);
                 step++;
                 input.placeholder = isInventory ? "Actual Count:" : prompts[step];
+                statusBar.innerText = `Active: ${entry.start} | ${entry.desc} | ${isInventory ? 'Count?' : 'Detail?'}`;
             } else if (step === 2) {
                 if (!val) return;
                 entry.note = val;
@@ -127,6 +133,7 @@
                     output.innerHTML += `<div>> Detail: ${val}</div><div class="error">[ERROR] Deviation detected!</div>`;
                     step = 3;
                     input.placeholder = "Adjustment:";
+                    statusBar.innerText = `Active: ${entry.start} | ${entry.desc} | ${entry.note} | Adjustment?`;
                 } else {
                     saveEntry();
                 }
@@ -150,6 +157,7 @@
         entry = {};
         isInventory = false;
         input.placeholder = prompts[0];
+        statusBar.innerText = "System Ready";
     }
 
     function startMatrix() {
