@@ -7,7 +7,9 @@
     <link rel="manifest" href='data:application/manifest+json,{"name":"TermiTask","short_name":"TermiTask","start_url":"./index.html","display":"standalone","background_color":"#000000","theme_color":"#000000"}'>
     <style>
         body { background: #0a0a0a; color: #00ff00; font-family: "Courier New", monospace; margin: 0; padding: 15px; overflow-x: hidden; }
-        #status-bar { color: #555; font-size: 0.8em; margin-bottom: 10px; border-bottom: 1px solid #1a1a1a; padding-bottom: 5px; height: 1.2em; }
+        #status-bar { color: #555; font-size: 0.8em; margin-bottom: 10px; border-bottom: 1px solid #1a1a1a; padding-bottom: 5px; }
+        #progress-container { width: 100%; height: 5px; background: #1a1a1a; margin-top: 5px; }
+        #progress-bar { height: 100%; background: #00ff00; width: 0%; transition: width 0.5s; }
         #output { margin-bottom: 60px; user-select: text; -webkit-user-select: text; }
         .log-entry { margin-bottom: 10px; border-bottom: 1px solid #1a1a1a; padding-bottom: 5px; cursor: text; }
         .error { color: #ff0000; }
@@ -19,7 +21,10 @@
 <body>
 
 <canvas id="matrix-canvas"></canvas>
-<div id="status-bar">System Ready</div>
+<div id="status-bar">
+    <div id="active-text">System Ready</div>
+    <div id="progress-container"><div id="progress-bar"></div></div>
+</div>
 <div id="output"></div>
 <div id="input-area">
     <span>&gt;&nbsp;</span>
@@ -29,7 +34,8 @@
 <script>
     const output = document.getElementById('output');
     const input = document.getElementById('cmd');
-    const statusBar = document.getElementById('status-bar');
+    const activeText = document.getElementById('active-text');
+    const progressBar = document.getElementById('progress-bar');
     const canvas = document.getElementById('matrix-canvas');
     const ctx = canvas.getContext('2d');
     let step = 0;
@@ -42,108 +48,58 @@
     let saved = JSON.parse(localStorage.getItem('tasks') || '[]');
     saved.forEach(s => output.innerHTML += `<div class="log-entry">[SAVED] ${s}</div>`);
 
+    setInterval(updateProgress, 60000);
+    updateProgress();
+
+    function updateProgress() {
+        const now = new Date();
+        const timeVal = now.getHours() * 60 + now.getMinutes();
+        const startMorning = 480, endMorning = 690, startAfternoon = 750, endAfternoon = 990;
+        let percent = 0;
+
+        if (timeVal >= startMorning && timeVal <= endMorning) {
+            percent = ((timeVal - startMorning) / (endMorning - startMorning)) * 100;
+        } else if (timeVal > endMorning && timeVal < startAfternoon) {
+            percent = 100;
+        } else if (timeVal >= startAfternoon && timeVal <= endAfternoon) {
+            percent = 100 - (((timeVal - startAfternoon) / (endAfternoon - startAfternoon)) * 100);
+        } else if (timeVal > endAfternoon) {
+            percent = 0;
+        }
+        progressBar.style.width = `${Math.min(100, Math.max(0, percent))}%`;
+    }
+
     input.addEventListener('keydown', (e) => {
         if (e.key === 'Enter') {
             const val = input.value.trim();
-
             if (awaitingConfirmation) {
-                if (val.toLowerCase() === 'y') {
-                    localStorage.removeItem('tasks');
-                    output.innerHTML = '';
-                    saved = [];
-                }
-                awaitingConfirmation = false;
-                input.placeholder = prompts[0];
-                statusBar.innerText = "System Ready";
-                input.value = '';
-                return;
+                if (val.toLowerCase() === 'y') { localStorage.removeItem('tasks'); output.innerHTML = ''; saved = []; }
+                awaitingConfirmation = false; input.placeholder = prompts[0]; activeText.innerText = "System Ready"; input.value = ''; return;
             }
-
-            if (val.toLowerCase() === 'clear') {
-                output.innerHTML += `<div>> clear</div><div>Confirm clear all data? (y/n)</div>`;
-                awaitingConfirmation = true;
-                input.value = '';
-                return;
-            }
-
-            if (val.toLowerCase() === 'matrix') {
-                startMatrix();
-                input.value = '';
-                return;
-            }
-
-            if (val.toLowerCase() === 'stats') {
-                const total = saved.length;
-                const inventory = saved.filter(s => s.includes('|')).length;
-                output.innerHTML += `<div>> stats</div><div>Total Entries: ${total} | Inventory Tasks: ${inventory}</div>`;
-                input.value = '';
-                return;
-            }
-
+            if (val.toLowerCase() === 'clear') { output.innerHTML += `<div>> clear</div><div>Confirm clear all data? (y/n)</div>`; awaitingConfirmation = true; input.value = ''; return; }
+            if (val.toLowerCase() === 'matrix') { startMatrix(); input.value = ''; return; }
+            if (val.toLowerCase() === 'stats') { const total = saved.length; const inv = saved.filter(s => s.includes('|')).length; output.innerHTML += `<div>> stats</div><div>Total Entries: ${total} | Inventory Tasks: ${inv}</div>`; input.value = ''; return; }
             if (step === 0 && val.toLowerCase() === 'export') {
                 const isoTimestamp = new Date().toISOString().replace(/[:.]/g, '-').slice(0, 19);
-                let csvContent = "Start,Task,Detail,Adjustment,End\n";
-                csvContent += saved.map(line => {
+                let csvContent = "Start,Task,Detail,Adjustment,End\n" + saved.map(line => {
                     let parts = line.split(' | ');
-                    let start = parts[0];
-                    let task = parts[1];
-                    let detail = parts[2];
-                    let adj = "";
-                    let end = "";
-                    if (parts.length === 5) {
-                        adj = parts[3].replace('Adj: ', '');
-                        end = parts[4].replace('End: ', '');
-                    } else {
-                        end = parts[3].replace('End: ', '');
-                    }
-                    return `${start},${task},${detail},${adj},${end}`;
+                    let adj = parts.length === 5 ? parts[3].replace('Adj: ', '') : "";
+                    let end = parts.length === 5 ? parts[4].replace('End: ', '') : parts[3].replace('End: ', '');
+                    return `${parts[0]},${parts[1]},${parts[2]},${adj},${end}`;
                 }).join("\n");
-                
-                const encodedUri = encodeURI("data:text/csv;charset=utf-8," + csvContent);
-                const link = document.createElement("a");
-                link.setAttribute("href", encodedUri);
-                link.setAttribute("download", `termitask_export_${isoTimestamp}.csv`);
-                document.body.appendChild(link);
-                link.click();
-                link.remove();
-                input.value = '';
-                return;
+                const link = document.createElement("a"); link.href = encodeURI("data:text/csv;charset=utf-8," + csvContent); link.download = `termitask_export_${isoTimestamp}.csv`; document.body.appendChild(link); link.click(); link.remove(); input.value = ''; return;
             }
 
             if (step === 0) {
-                if (val === "") {
-                    entry.start = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: false });
-                } else {
-                    entry.start = val.replace(/;/g, ':');
-                }
-                step++;
-                input.placeholder = prompts[step];
-                statusBar.innerText = `Active: ${entry.start} | Task?`;
+                entry.start = val === "" ? new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: false }) : val.replace(/;/g, ':');
+                step++; input.placeholder = prompts[step]; activeText.innerText = `Active: ${entry.start} | Task?`;
             } else if (step === 1) {
-                if (!val) return;
-                entry.desc = val;
-                isInventory = /^\d+$/.test(val);
-                step++;
-                input.placeholder = isInventory ? "Actual Count:" : prompts[step];
-                statusBar.innerText = `Active: ${entry.start} | ${entry.desc} | ${isInventory ? 'Count?' : 'Detail?'}`;
+                if (!val) return; entry.desc = val; isInventory = /^\d+$/.test(val); step++; input.placeholder = isInventory ? "Actual Count:" : prompts[step]; activeText.innerText = `Active: ${entry.start} | ${entry.desc} | ${isInventory ? 'Count?' : 'Detail?'}`;
             } else if (step === 2) {
-                if (!val) return;
-                entry.note = val;
-                if (isInventory && parseInt(entry.desc) !== parseInt(val)) {
-                    output.innerHTML += `<div>> Detail: ${val}</div><div class="error">[ERROR] Deviation detected!</div>`;
-                    step = 3;
-                    input.placeholder = "Adjustment:";
-                    statusBar.innerText = `Active: ${entry.start} | ${entry.desc} | ${entry.note} | Adjustment?`;
-                } else {
-                    saveEntry();
-                }
-            } else if (step === 3) {
-                entry.adj = val;
-                saveEntry();
-            }
-            
-            input.value = '';
-            window.scrollTo(0, document.body.scrollHeight);
+                if (!val) return; entry.note = val;
+                if (isInventory && parseInt(entry.desc) !== parseInt(val)) { output.innerHTML += `<div>> Detail: ${val}</div><div class="error">[ERROR] Deviation detected!</div>`; step = 3; input.placeholder = "Adjustment:"; activeText.innerText = `Active: ${entry.start} | ${entry.desc} | ${entry.note} | Adjustment?`; } else { saveEntry(); }
+            } else if (step === 3) { entry.adj = val; saveEntry(); }
+            input.value = ''; window.scrollTo(0, document.body.scrollHeight);
         }
     });
 
@@ -151,41 +107,20 @@
         const timestamp = new Date().toLocaleTimeString([], { hour12: false });
         const finalEntry = `${entry.start} | ${entry.desc} | ${entry.note} ${entry.adj ? '| Adj: ' + entry.adj : ''} | End: ${timestamp}`;
         output.innerHTML += `<div class="log-entry">[SAVED] ${finalEntry}</div>`;
-        saved.push(finalEntry);
-        localStorage.setItem('tasks', JSON.stringify(saved));
-        step = 0;
-        entry = {};
-        isInventory = false;
-        input.placeholder = prompts[0];
-        statusBar.innerText = "System Ready";
+        saved.push(finalEntry); localStorage.setItem('tasks', JSON.stringify(saved));
+        step = 0; entry = {}; isInventory = false; input.placeholder = prompts[0]; activeText.innerText = "System Ready";
     }
 
     function startMatrix() {
-        canvas.style.display = 'block';
-        canvas.width = window.innerWidth;
-        canvas.height = window.innerHeight;
+        canvas.style.display = 'block'; canvas.width = window.innerWidth; canvas.height = window.innerHeight;
         const drops = Array(Math.floor(canvas.width / 20)).fill(1);
         matrixInterval = setInterval(() => {
-            ctx.fillStyle = 'rgba(0, 0, 0, 0.05)';
-            ctx.fillRect(0, 0, canvas.width, canvas.height);
-            ctx.fillStyle = '#0F0';
-            drops.forEach((drop, i) => {
-                ctx.fillText(String.fromCharCode(0x30A0 + Math.random() * 96), i * 20, drop * 20);
-                if (drop * 20 > canvas.height && Math.random() > 0.975) drops[i] = 0;
-                drops[i]++;
-            });
+            ctx.fillStyle = 'rgba(0, 0, 0, 0.05)'; ctx.fillRect(0, 0, canvas.width, canvas.height); ctx.fillStyle = '#0F0';
+            drops.forEach((drop, i) => { ctx.fillText(String.fromCharCode(0x30A0 + Math.random() * 96), i * 20, drop * 20); if (drop * 20 > canvas.height && Math.random() > 0.975) drops[i] = 0; drops[i]++; });
         }, 33);
     }
-
-    canvas.addEventListener('click', () => {
-        clearInterval(matrixInterval);
-        canvas.style.display = 'none';
-    });
-
-    if ('serviceWorker' in navigator) {
-        const swBlob = new Blob(['self.addEventListener("fetch", () => {});'], {type: 'text/javascript'});
-        navigator.serviceWorker.register(URL.createObjectURL(swBlob));
-    }
+    canvas.addEventListener('click', () => { clearInterval(matrixInterval); canvas.style.display = 'none'; });
+    if ('serviceWorker' in navigator) { const swBlob = new Blob(['self.addEventListener("fetch", () => {});'], {type: 'text/javascript'}); navigator.serviceWorker.register(URL.createObjectURL(swBlob)); }
 </script>
 </body>
 </html>
