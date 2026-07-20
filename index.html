@@ -4,137 +4,22 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>TermiTask</title>
-    <link rel="manifest" href='data:application/manifest+json,{"name":"TermiTask","short_name":"TermiTask","start_url":"./index.html","display":"standalone","background_color":"#000000","theme_color":"#000000"}'>
     <style>
-        body { background: #0a0a0a; color: #00ff00; font-family: "Courier New", monospace; margin: 0; padding: 15px; overflow-x: hidden; }
+        body { background: #0a0a0a; color: #00ff00; font-family: "Courier New", monospace; margin: 0; padding: 15px; }
         #status-bar { color: #555; font-size: 0.8em; margin-bottom: 10px; border-bottom: 1px solid #1a1a1a; padding-bottom: 5px; }
-        #progress-container { width: 100%; height: 5px; background: #1a1a1a; margin-top: 5px; }
-        #progress-bar { height: 100%; background: #00ff00; width: 0%; transition: width 0.5s; }
         #output { margin-bottom: 60px; user-select: text; }
         .log-entry { margin-bottom: 10px; border-bottom: 1px solid #1a1a1a; padding-bottom: 5px; }
-        .error { color: #ff0000; }
-        #input-area { display: flex; align-items: center; position: fixed; bottom: 20px; width: 90%; background: #0a0a0a; z-index: 10; }
+        #input-area { display: flex; position: fixed; bottom: 20px; width: 90%; background: #0a0a0a; }
         input { background: transparent; border: none; color: #00ff00; font: inherit; width: 100%; outline: none; }
-        #matrix-canvas { position: fixed; top: 0; left: 0; width: 100%; height: 100%; z-index: 5; display: none; background: #000; }
     </style>
 </head>
 <body>
+    <div id="status-bar">
+        <div id="active-text">System Ready</div>
+    </div>
+    <div id="output"></div>
+    <div id="input-area"><span>&gt;&nbsp;</span><input type="text" id="cmd" autofocus autocomplete="off"></div>
 
-<canvas id="matrix-canvas"></canvas>
-<div id="status-bar">
-    <div id="active-text">System Ready</div>
-    <div id="progress-container"><div id="progress-bar"></div></div>
-</div>
-<div id="output"></div>
-<div id="input-area">
-    <span>&gt;&nbsp;</span>
-    <input type="text" id="cmd" autofocus autocomplete="off" placeholder="Start Time...">
-</div>
-
-<script>
-    const output = document.getElementById('output'), input = document.getElementById('cmd'), activeText = document.getElementById('active-text'), progressBar = document.getElementById('progress-bar'), canvas = document.getElementById('matrix-canvas'), ctx = canvas.getContext('2d');
-    let step = 0, entry = {}, orderMode = false, subStep = 0, currentOrder = { type: '', id: '', totalQty: 0, start: '' }, matrixInterval = null, gameActive = false, botY = 0, velY = 0, score = 0, hurdles = [];
-    let saved = JSON.parse(localStorage.getItem('tasks') || '[]');
-    saved.forEach(s => output.innerHTML += `<div class="log-entry">[SAVED] ${s}</div>`);
-
-    function updateProgress() {
-        const now = new Date(), timeVal = now.getHours() * 60 + now.getMinutes();
-        const startMorning = 480, endMorning = 690, startAfternoon = 750, endAfternoon = 990;
-        let percent = (timeVal >= startMorning && timeVal <= endMorning) ? ((timeVal - startMorning) / (endMorning - startMorning)) * 100 : (timeVal > endMorning && timeVal < startAfternoon) ? 100 : (timeVal >= startAfternoon && timeVal <= endAfternoon) ? 100 - (((timeVal - startAfternoon) / (endAfternoon - startAfternoon)) * 100) : 0;
-        progressBar.style.width = `${Math.min(100, Math.max(0, percent))}%`;
-    }
-    setInterval(updateProgress, 60000); updateProgress();
-
-    async function showWeather() {
-        output.innerHTML += `<div>> weather</div>`;
-        try { const res = await fetch('https://wttr.in/?format=3'); output.innerHTML += `<div>[WEATHER] ${await res.text()}</div>`; }
-        catch(e) { output.innerHTML += `<div class="error">[ERROR] Weather service unreachable.</div>`; }
-    }
-
-    input.addEventListener('keydown', (e) => {
-        if (e.key !== 'Enter') return;
-        const val = input.value.trim();
-        
-        if (orderMode) {
-            if (subStep === 1) { currentOrder.id = val; subStep = 2; output.innerHTML += `<div>> ${val}</div><div>[SYSTEM] ${currentOrder.type} order ${val} initialized. Enter quantities:</div>`; activeText.innerText = `Order: ${val} | Total: 0`; }
-            else if (subStep === 2) {
-                if (val.toLowerCase() === 'done') {
-                    const end = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: false });
-                    const entryStr = `${currentOrder.start} | ${currentOrder.type[0]}${currentOrder.id} | Total:${currentOrder.totalQty} | End: ${end}`;
-                    output.innerHTML += `<div class="log-entry">[SAVED] ${entryStr}</div>`;
-                    saved.push(entryStr); localStorage.setItem('tasks', JSON.stringify(saved));
-                    orderMode = false; subStep = 0; input.placeholder = "Start Time..."; activeText.innerText = "System Ready";
-                } else if (!isNaN(parseInt(val))) { currentOrder.totalQty += parseInt(val); output.innerHTML += `<div>> ${val}</div>`; activeText.innerText = `Order: ${currentOrder.id} | Total: ${currentOrder.totalQty}`; }
-            }
-        } else if (val.toLowerCase() === 'export') {
-            const iso = new Date().toISOString().replace(/[:.]/g, '-').slice(0, 19);
-            const csv = "Start,Task,Detail,End\n" + saved.map(s => s.replace(/ \| /g, ',')).join("\n");
-            const link = document.createElement("a"); link.href = "data:text/csv;charset=utf-8," + encodeURI(csv); link.download = `tasks_${iso}.csv`; link.click();
-        } else if (val.toLowerCase() === 'clear') {
-            if (confirm("Clear all data?")) { localStorage.removeItem('tasks'); saved = []; output.innerHTML = ''; }
-        } else if (val.toLowerCase() === 'stats') {
-            let totalPieces = 0, totalMinutes = 0, summary = {};
-            saved.forEach(s => {
-                const parts = s.split(' | ');
-                const totalPart = parts.find(p => p.includes('Total:'));
-                if (totalPart) {
-                    const count = parseInt(totalPart.replace('Total:', ''));
-                    totalPieces += count;
-                    summary[parts[1][0]] = (summary[parts[1][0]] || 0) + count;
-                    const start = parts[0].split(':'), end = parts[parts.length-1].replace('End: ', '').split(':');
-                    totalMinutes += (end[0]*60 + +end[1]) - (start[0]*60 + +start[1]);
-                }
-            });
-            output.innerHTML += `<div>> stats</div><div>Total Pieces: ${totalPieces} | Total Time: ${totalMinutes} mins</div><div>Breakdown:</div>` + Object.entries(summary).map(e => `<div>- ${e[0]}: ${e[1]}</div>`).join('');
-        } else if (val.toLowerCase() === 'matrix') { startMatrix(); } else if (val.toLowerCase() === 'botjump') { startBotJump(); } else if (val.toLowerCase() === 'weather') { showWeather(); }
-        else if (step === 0 && (val.toLowerCase() === 't' || val.toLowerCase() === 'c')) {
-            orderMode = true; subStep = 1; currentOrder = { type: val.toLowerCase() === 't' ? 'Tech' : 'Contractor', totalQty: 0, start: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: false }) };
-            output.innerHTML += `<div>> ${val}</div><div>[SYSTEM] Enter ${currentOrder.type === 'Tech' ? 'Order #:' : 'Contractor Name:'}</div>`; input.placeholder = "ID/Name:";
-        } else {
-            if (step === 0) {
-                entry.start = val === "" ? new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: false }) : val;
-                step = 1; input.placeholder = "Task:"; activeText.innerText = `Active: ${entry.start} | Task?`;
-            } else if (step === 1) {
-                entry.desc = val;
-                if (/^\d+$/.test(val)) {
-                    step = 2; input.placeholder = "Detail (Product):"; activeText.innerText = `Active: ${entry.start} | ${val} | Product?`;
-                } else {
-                    step = 3; input.placeholder = "Detail:"; activeText.innerText = `Active: ${entry.start} | ${val} | Detail?`;
-                }
-            } else if (step === 2) {
-                entry.detail = val;
-                step = 3; input.placeholder = "Note (or Discrepancy):"; activeText.innerText = `Active: ${entry.start} | ${entry.desc} | ${val} | Note?`;
-            } else if (step === 3) {
-                const end = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: false });
-                const detail = entry.detail || val;
-                const note = entry.detail ? ` | ${val}` : "";
-                const entryStr = `${entry.start} | ${entry.desc} | ${detail}${note} | End: ${end}`;
-                output.innerHTML += `<div class="log-entry">[SAVED] ${entryStr}</div>`;
-                saved.push(entryStr); localStorage.setItem('tasks', JSON.stringify(saved));
-                step = 0; entry = {}; input.placeholder = "Start Time..."; activeText.innerText = "System Ready";
-            }
-        }
-        input.value = ''; window.scrollTo(0, document.body.scrollHeight);
-    });
-
-    function startMatrix() {
-        canvas.style.display = 'block'; canvas.width = window.innerWidth; canvas.height = window.innerHeight;
-        const drops = Array(Math.floor(canvas.width / 20)).fill(1);
-        matrixInterval = setInterval(() => { ctx.fillStyle = 'rgba(0,0,0,0.05)'; ctx.fillRect(0,0,canvas.width,canvas.height); ctx.fillStyle = '#0F0'; drops.forEach((d, i) => { ctx.fillText(String.fromCharCode(0x30A0 + Math.random() * 96), i*20, d*20); if (d*20 > canvas.height && Math.random() > 0.975) drops[i] = 0; drops[i]++; }); }, 33);
-    }
-
-    function startBotJump() {
-        gameActive = true; botY = 0; velY = 0; score = 0; hurdles = []; canvas.style.display = 'block'; canvas.width = window.innerWidth; canvas.height = window.innerHeight;
-        let loop = setInterval(() => {
-            if (!gameActive) { clearInterval(loop); return; }
-            velY += 1.2; botY += velY; if (botY > 0) { botY = 0; velY = 0; }
-            ctx.fillStyle = '#000'; ctx.fillRect(0,0,canvas.width,canvas.height); ctx.fillStyle = '#00ff00'; ctx.fillText('[o]', 50, canvas.height - 50 + botY);
-            if (Math.random() < 0.03) hurdles.push({ x: canvas.width, h: Math.floor(Math.random()*2)+1 });
-            hurdles.forEach((h, i) => { h.x -= 10; ctx.fillText('#'.repeat(h.h), h.x, canvas.height - 50); if (h.x < 70 && h.x > 30 && botY > -20*h.h) { gameActive = false; output.innerHTML += `<div>[GAME OVER] Score: ${score}</div>`; } if (h.x < 0) { hurdles.splice(i, 1); score++; } });
-        }, 33);
-    }
-
-    canvas.addEventListener('click', () => { if (gameActive) velY = -15; else { clearInterval(matrixInterval); canvas.style.display = 'none'; } });
-</script>
+    <script src="js/engine.js" type="module"></script>
 </body>
 </html>
