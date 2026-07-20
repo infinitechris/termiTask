@@ -3,28 +3,37 @@ import { handleTaskEntry } from './tasks.js';
 import { handleCommands } from './utils.js';
 
 export let saved = JSON.parse(localStorage.getItem('tasks') || '[]');
-export const output = document.getElementById('output');
-export const input = document.getElementById('cmd');
-export const activeText = document.getElementById('active-text');
+export let output, input, activeText;
 export let state = { step: 0, entry: {}, orderMode: false, subStep: 0, currentOrder: {} };
 
-saved.forEach(s => output.innerHTML += `<div class="log-entry">[SAVED] ${s}</div>`);
+document.addEventListener('DOMContentLoaded', () => {
+    output = document.getElementById('output');
+    input = document.getElementById('cmd');
+    activeText = document.getElementById('active-text');
 
-input.addEventListener('keydown', (e) => {
-    if (e.key !== 'Enter') return;
-    const val = input.value.trim();
-    try {
-        if (state.orderMode) {
-            handleOrderMode(val);
-        } else {
-            const handled = handleCommands(val);
-            if (!handled) {
-                handleTaskEntry(val);
-            }
-        }
-        input.value = '';
-    } catch (err) {
-        output.innerHTML += `<div style="color: red;">[ERROR] ${err.message}</div>`;
+    if (!input || !output) {
+        document.body.innerHTML += `<div style="color: red;">[CRITICAL] Elements #cmd or #output not found!</div>`;
+        return;
     }
-    window.scrollTo(0, document.body.scrollHeight);
+
+    saved.forEach(s => output.innerHTML += `<div class="log-entry">[SAVED] ${s}</div>`);
+
+    input.addEventListener('keydown', (e) => {
+        if (e.key !== 'Enter') return;
+        const val = input.value.trim();
+        try {
+            if (state.orderMode) {
+                handleOrderMode(val);
+            } else {
+                const handled = handleCommands(val);
+                if (!handled) {
+                    handleTaskEntry(val);
+                }
+            }
+            input.value = '';
+        } catch (err) {
+            output.innerHTML += `<div style="color: red;">[ERROR] ${err.message}</div>`;
+        }
+        window.scrollTo(0, document.body.scrollHeight);
+    });
 });
