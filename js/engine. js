@@ -13,8 +13,18 @@ saved.forEach(s => output.innerHTML += `<div class="log-entry">[SAVED] ${s}</div
 input.addEventListener('keydown', (e) => {
     if (e.key !== 'Enter') return;
     const val = input.value.trim();
-    if (state.orderMode) handleOrderMode(val);
-    else if (!handleCommands(val)) handleTaskEntry(val);
-    input.value = '';
+    try {
+        if (state.orderMode) {
+            handleOrderMode(val);
+        } else {
+            const handled = handleCommands(val);
+            if (!handled) {
+                handleTaskEntry(val);
+            }
+        }
+        input.value = '';
+    } catch (err) {
+        output.innerHTML += `<div style="color: red;">[ERROR] ${err.message}</div>`;
+    }
     window.scrollTo(0, document.body.scrollHeight);
 });
