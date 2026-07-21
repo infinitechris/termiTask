@@ -1,4 +1,4 @@
-// app.js - TermiTask Production Line Engine (Station 1)
+// app.js - TermiTask Production Line Engine (Station 2 Complete)
 
 document.addEventListener('DOMContentLoaded', () => {
     const cmdInput = document.getElementById('cmd');
@@ -13,10 +13,10 @@ document.addEventListener('DOMContentLoaded', () => {
     document.addEventListener('click', () => cmdInput.focus());
 
     // Boot message
-    echoToTerminal('SYSTEM ONLINE: TermiTask v1.0', '#00ffff');
+    echoToTerminal('SYSTEM ONLINE: TermiTask v1.0 [Station 2 Active]', '#00ffff');
     echoToTerminal('Awaiting input... Type tasks to build schedule. Type "help" for options.', '#888888');
 
-    // --- Station 1: Global Error Boundary & Input Loop ---
+    // --- Global Error Boundary & Input Loop ---
     cmdInput.addEventListener('keydown', (event) => {
         if (event.key === 'Enter') {
             const rawInput = cmdInput.value;
@@ -43,23 +43,49 @@ document.addEventListener('DOMContentLoaded', () => {
     // --- Command Router ---
     function handleInput(text) {
         const lower = text.toLowerCase();
+        const parts = text.trim().split(/\s+/);
+        const cmd = parts[0].toLowerCase();
 
         // 0. Help Command (Placeholder for Station 3)
-        if (lower === 'help') {
+        if (cmd === 'help') {
             echoToTerminal('Help system offline. Unlock Station 3 to enable guidance.', '#ff3333');
             return;
         }
 
-        // 1. Clear Command (Placeholder for Station 2)
-        if (lower === 'clear') {
-            outputElement.innerHTML = '';
-            appState.tasks = [];
-            echoToTerminal('Terminal cleared. Queue reset.', '#ffb700');
+        // --- Station 2: Review & Inspection Commands ---
+
+        // 1. List / Tasks Command
+        if (cmd === 'list' || cmd === 'tasks') {
+            handleListCommand();
             return;
         }
 
-        // 2. Stop / End Command
-        if (lower === 'stop' || lower === 'end' || lower === 'done') {
+        // 2. Preview / CSV Command
+        if (cmd === 'preview' || cmd === 'csv') {
+            handlePreviewCommand();
+            return;
+        }
+
+        // 3. Edit Command (`edit <number> <new text>`)
+        if (cmd === 'edit') {
+            handleEditCommand(parts);
+            return;
+        }
+
+        // 4. Stats / Status Command
+        if (cmd === 'stats' || cmd === 'status') {
+            handleStatsCommand();
+            return;
+        }
+
+        // 5. Safe Clear Command (`clear [everything|screen|cancel]`)
+        if (cmd === 'clear') {
+            handleClearCommand(parts[1]);
+            return;
+        }
+
+        // --- Core Task Engine: Stop / End Command ---
+        if (cmd === 'stop' || cmd === 'end' || cmd === 'done') {
             handleStopCommand();
             return;
         }
@@ -86,7 +112,88 @@ document.addEventListener('DOMContentLoaded', () => {
         echoToTerminal(`[${startTime}] Task Queued: ${text}`, '#00ff66');
     }
 
-    // --- Stop Command Logic ---
+    // --- Station 2 Feature Handlers ---
+
+    function handleListCommand() {
+        if (appState.tasks.length === 0) {
+            echoToTerminal('[INFO] Task queue is currently empty.', '#888888');
+            return;
+        }
+
+        echoToTerminal('--- Active Timeline ---', '#00ffff');
+        appState.tasks.forEach((task, index) => {
+            const endTime = task.end || 'IN PROGRESS';
+            echoToTerminal(`  [${index + 1}] ${task.start} - ${endTime} : ${task.text}`, '#00ff66');
+        });
+        echoToTerminal('-----------------------', '#00ffff');
+    }
+
+    function handlePreviewCommand() {
+        if (appState.tasks.length === 0) {
+            echoToTerminal('[INFO] No data available for CSV preview.', '#888888');
+            return;
+        }
+
+        echoToTerminal('--- CSV Stream Preview ---', '#ffb700');
+        echoToTerminal('Start,End,Task', '#888888');
+        appState.tasks.forEach(task => {
+            const endTime = task.end || '';
+            echoToTerminal(`"${task.start}","${endTime}","${task.text}"`, '#ffffff');
+        });
+        echoToTerminal('--------------------------', '#ffb700');
+    }
+
+    function handleEditCommand(parts) {
+        if (parts.length < 3) {
+            echoToTerminal('[ERROR] Syntax: edit <number> <new description>', '#ff3333');
+            return;
+        }
+
+        const index = parseInt(parts[1], 10) - 1;
+        if (isNaN(index) || index < 0 || index >= appState.tasks.length) {
+            echoToTerminal(`[ERROR] Invalid task index: ${parts[1]}`, '#ff3333');
+            return;
+        }
+
+        const newText = parts.slice(2).join(' ');
+        const oldText = appState.tasks[index].text;
+        appState.tasks[index].text = newText;
+
+        echoToTerminal(`[SUCCESS] Task #${index + 1} updated from "${oldText}" to "${newText}"`, '#00ff66');
+    }
+
+    function handleStatsCommand() {
+        const totalTasks = appState.tasks.length;
+        const completedTasks = appState.tasks.filter(t => t.end).inProgress || appState.tasks.filter(t => t.end).length;
+        const activeTask = appState.tasks.find(t => !t.end);
+
+        echoToTerminal('--- Session Metrics ---', '#00ffff');
+        echoToTerminal(`Total Logged Entries: ${totalTasks}`, '#ffffff');
+        echoToTerminal(`Completed Slots: ${completedTasks}`, '#ffffff');
+        echoToTerminal(`Current Status: ${activeTask ? 'ACTIVE (' + activeTask.text + ')' : 'IDLE'}`, activeTask ? '#00ff66' : '#ffb700');
+        echoToTerminal('-----------------------', '#00ffff');
+    }
+
+    function handleClearCommand(mode) {
+        const target = (mode || 'screen').toLowerCase();
+
+        if (target === 'everything' || target === 'all') {
+            outputElement.innerHTML = '';
+            appState.tasks = [];
+            echoToTerminal('[SYSTEM] Complete wipe executed. Screen cleared and queue reset.', '#ff3333');
+        } else if (target === 'screen') {
+            outputElement.innerHTML = '';
+            echoToTerminal('[SYSTEM] Terminal screen cleared. Queue preserved.', '#ffb700');
+        } else if (target === 'cancel') {
+            echoToTerminal('[INFO] Clear operation cancelled.', '#888888');
+        } else {
+            // Default safe prompt behavior if no valid modifier given
+            outputElement.innerHTML = '';
+            echoToTerminal('[SYSTEM] Terminal screen cleared. (Use "clear everything" to wipe data queue).', '#ffb700');
+        }
+    }
+
+    // --- Core Task Engine: Stop Command ---
     function handleStopCommand() {
         if (appState.tasks.length === 0) {
             echoToTerminal('[INFO] No active tasks to stop.', '#888888');
