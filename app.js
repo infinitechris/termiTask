@@ -1,4 +1,4 @@
-// app.js - TermiTask Production Line Engine (v1.0 + Automatic Help Sync)
+// app.js - TermiTask Production Line Engine (v1.0 + Confirmation Clear Engine)
 
 document.addEventListener('DOMContentLoaded', () => {
     const cmdInput = document.getElementById('cmd');
@@ -6,7 +6,8 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // Central application state
     const appState = {
-        tasks: []
+        tasks: [],
+        pendingAction: null // Tracks active confirmation prompts ('clear')
     };
 
     // Keep focus locked on the input box
@@ -22,10 +23,12 @@ document.addEventListener('DOMContentLoaded', () => {
             const rawInput = cmdInput.value;
             const input = rawInput.trim();
 
-            if (!input) return;
+            if (!input && !appState.pendingAction) return;
 
-            // Echo the user prompt
-            echoToTerminal(`> ${input}`, '#ffb700');
+            // Echo the user prompt if something was typed
+            if (input) {
+                echoToTerminal(`> ${input}`, '#ffb700');
+            }
 
             try {
                 handleInput(input);
@@ -44,17 +47,23 @@ document.addEventListener('DOMContentLoaded', () => {
     function handleInput(text) {
         const lower = text.toLowerCase();
 
+        // Check if we are waiting for a confirmation response
+        if (appState.pendingAction === 'clear_confirm') {
+            handleClearConfirmation(lower);
+            return;
+        }
+
         // 0. Help Command
         if (lower === 'help') {
             printHelpMenu();
             return;
         }
 
-        // 1. Clear Command
+        // 1. Clear Command (Triggers confirmation flow)
         if (lower === 'clear') {
-            outputElement.innerHTML = '';
-            appState.tasks = [];
-            echoToTerminal('Terminal cleared. Queue reset.', '#ffb700');
+            appState.pendingAction = 'clear_confirm';
+            echoToTerminal('--- CONFIRM CLEAR OPERATION ---', '#ff3333');
+            echoToTerminal('Choose scope: [everything] (wipe tasks & screen), [screen] (wipe screen only), or [cancel]', '#ffb700');
             return;
         }
 
@@ -109,6 +118,24 @@ document.addEventListener('DOMContentLoaded', () => {
         echoToTerminal(`[${startTime}] Task Queued: ${text}`, '#00ff66');
     }
 
+    // --- Clear Confirmation Handler ---
+    function handleClearConfirmation(choice) {
+        appState.pendingAction = null; // Reset pending state
+
+        if (choice === 'everything' || choice === 'all' || choice === 'e') {
+            outputElement.innerHTML = '';
+            appState.tasks = [];
+            echoToTerminal('Terminal screen wiped. Task queue completely reset.', '#ff3333');
+        } else if (choice === 'screen' || choice === 's') {
+            outputElement.innerHTML = '';
+            echoToTerminal('Terminal screen wiped. Active task queue preserved.', '#ffb700');
+        } else if (choice === 'cancel' || choice === 'c' || choice === 'abort') {
+            echoToTerminal('Clear operation cancelled.', '#00ff66');
+        } else {
+            echoToTerminal('[ERROR] Unrecognized choice. Clear operation aborted.', '#ff3333');
+        }
+    }
+
     // --- Help Menu ---
     function printHelpMenu() {
         echoToTerminal('=== AVAILABLE COMMANDS ===', '#ffb700');
@@ -118,7 +145,7 @@ document.addEventListener('DOMContentLoaded', () => {
         echoToTerminal('  preview / csv      - Preview active timeline formatted as CSV data', '#00ffff');
         echoToTerminal('  stats / status     - Display total logged tasks and active task metrics', '#00ffff');
         echoToTerminal('  edit <num> <text>  - Modify an existing task description by index number', '#00ffff');
-        echoToTerminal('  clear              - Wipe terminal screen and reset task queue', '#ff3333');
+        echoToTerminal('  clear              - Prompts to wipe everything, just the screen, or cancel', '#ff3333');
         echoToTerminal('  [Any other text]   - Automatically queues a new sequential task', '#888888');
     }
 
