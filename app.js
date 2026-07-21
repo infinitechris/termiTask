@@ -1,4 +1,4 @@
-// app.js - TermiTask Production Line Engine (v1.0 + Stop Command)
+// app.js - TermiTask Production Line Engine (v1.0 + Automatic Help Sync)
 
 document.addEventListener('DOMContentLoaded', () => {
     const cmdInput = document.getElementById('cmd');
@@ -113,7 +113,7 @@ document.addEventListener('DOMContentLoaded', () => {
     function printHelpMenu() {
         echoToTerminal('=== AVAILABLE COMMANDS ===', '#ffb700');
         echoToTerminal('  help               - Displays this help menu', '#00ffff');
-        echoToTerminal('  stop / end         - Closes out the current active task without starting a new one', '#00ffff');
+        echoToTerminal('  stop / end / done  - Closes out the current active task without starting a new one', '#00ffff');
         echoToTerminal('  list / tasks       - View current numbered task timeline', '#00ffff');
         echoToTerminal('  preview / csv      - Preview active timeline formatted as CSV data', '#00ffff');
         echoToTerminal('  stats / status     - Display total logged tasks and active task metrics', '#00ffff');
