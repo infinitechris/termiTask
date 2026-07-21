@@ -1,4 +1,4 @@
-// app.js - TermiTask Production Line Engine (Station 1 Complete)
+// app.js - TermiTask Production Line Engine (Station 1)
 
 document.addEventListener('DOMContentLoaded', () => {
     const cmdInput = document.getElementById('cmd');
