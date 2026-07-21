@@ -1,4 +1,4 @@
-// app.js - TermiTask Production Line Engine (Station 2 Updated)
+// app.js - TermiTask Production Line Engine (Station 2 Complete)
 
 document.addEventListener('DOMContentLoaded', () => {
     const cmdInput = document.getElementById('cmd');
@@ -13,7 +13,7 @@ document.addEventListener('DOMContentLoaded', () => {
     document.addEventListener('click', () => cmdInput.focus());
 
     // Boot message
-    echoToTerminal('SYSTEM ONLINE: TermiTask v1.0 [Station 2 Active]', '#00ffff');
+    echoToTerminal('SYSTEM ONLINE: TermiTask v1.0 [Station 2 Complete]', '#00ffff');
     echoToTerminal('Awaiting input... Type tasks to build schedule. Type "help" for options.', '#888888');
 
     // --- Global Error Boundary & Input Loop ---
@@ -66,7 +66,7 @@ document.addEventListener('DOMContentLoaded', () => {
             return;
         }
 
-        // 3. Edit Command (`edit <number> [HH:MM] <new text>`)
+        // 3. Edit Command (`edit <number> [start|end|HH:MM] [...]`)
         if (cmd === 'edit') {
             handleEditCommand(parts);
             return;
@@ -145,7 +145,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     function handleEditCommand(parts) {
         if (parts.length < 3) {
-            echoToTerminal('[ERROR] Syntax: edit <number> [HH:MM] <new description>', '#ff3333');
+            echoToTerminal('[ERROR] Syntax: edit <number> [start|end|HH:MM] <new text>', '#ff3333');
             return;
         }
 
@@ -155,8 +155,45 @@ document.addEventListener('DOMContentLoaded', () => {
             return;
         }
 
-        // Check if the third argument is a valid 24-hour timestamp (HH:MM)
+        const task = appState.tasks[index];
         const timeRegex = /^([01]\d|2[0-3]):([0-5]\d)$/;
+
+        // Scenario A: Explicit target field specified -> edit <number> <start|end> <HH:MM> [optional new text]
+        if (parts.length >= 4 && (parts[2].toLowerCase() === 'start' || parts[2].toLowerCase() === 'end')) {
+            const targetField = parts[2].toLowerCase();
+            const newTime = parts[3];
+
+            if (!timeRegex.test(newTime)) {
+                echoToTerminal(`[ERROR] Invalid 24-hour time format: "${newTime}". Use HH:MM.`, '#ff3333');
+                return;
+            }
+
+            const oldTime = task[targetField] || 'IN PROGRESS';
+            task[targetField] = newTime;
+            
+            // Check if they also included a new text description after the timestamp
+            let updateMsg = `[SUCCESS] Task #${index + 1} ${targetField} time updated: ${oldTime} -> ${newTime}`;
+            if (parts.length > 4) {
+                const newText = parts.slice(4).join(' ');
+                const oldText = task.text;
+                task.text = newText;
+                updateMsg += ` | Text updated: "${oldText}" -> "${newText}"`;
+            }
+
+            echoToTerminal(updateMsg, '#00ff66');
+            return;
+        }
+
+        // Scenario B: Only a time is passed -> edit <number> <HH:MM> (Ambiguous: Start or End?)
+        if (parts.length === 3 && timeRegex.test(parts[2])) {
+            const timeVal = parts[2];
+            echoToTerminal(`[WARN] Ambiguous timestamp for Task #${index + 1}. Do you want to update the start or end time?`, '#ffb700');
+            echoToTerminal(`  > edit ${index + 1} start ${timeVal}`, '#888888');
+            echoToTerminal(`  > edit ${index + 1} end ${timeVal}`, '#888888');
+            return;
+        }
+
+        // Scenario C: Standard edit with optional start time + text OR pure text update -> edit <number> [HH:MM] <text>
         let newStart = null;
         let textStartIndex = 2;
 
@@ -171,7 +208,6 @@ document.addEventListener('DOMContentLoaded', () => {
         }
 
         const newText = parts.slice(textStartIndex).join(' ');
-        const task = appState.tasks[index];
         const oldText = task.text;
         const oldStart = task.start;
 
