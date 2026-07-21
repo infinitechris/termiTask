@@ -2,11 +2,23 @@
 
 export function handleTaskEntry(inputVal, appState, outputElement) {
     try {
-        const now = new Date();
-        const startTime = `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`;
+        let startTime;
+        let taskText = inputVal.trim();
+
+        // Check if a time was provided at the start (e.g., "10:00 Start working on project")
+        const timeMatch = taskText.match(/^(\d{2}:\d{2})\s+(.+)$/);
+
+        if (timeMatch) {
+            startTime = timeMatch[1]; // Use manually specified 24h time
+            taskText = timeMatch[2];   // Extract the actual task description
+        } else {
+            // Fallback to current system time if no manual time was prefixed
+            const now = new Date();
+            startTime = `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`;
+        }
 
         const newTask = {
-            text: inputVal.trim(),
+            text: taskText,
             start: startTime,
             end: null
         };
