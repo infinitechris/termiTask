@@ -1,4 +1,4 @@
-// app.js - TermiTask Production Line Engine (Product Pull Sub-Loop with Summation)
+// app.js - TermiTask Production Line Engine (True Quantity Summation)
 
 document.addEventListener('DOMContentLoaded', () => {
     const cmdInput = document.getElementById('cmd');
@@ -18,7 +18,7 @@ document.addEventListener('DOMContentLoaded', () => {
     document.addEventListener('click', () => cmdInput.focus());
 
     // Boot message
-    echoToTerminal('SYSTEM ONLINE: TermiTask v1.0 [Product Summation Active]', '#00ffff');
+    echoToTerminal('SYSTEM ONLINE: TermiTask v1.0 [Numeric Summation Active]', '#00ffff');
     echoToTerminal('Awaiting input... Type tasks to build schedule. Type "help" for options.', '#888888');
 
     // --- Global Error Boundary & Input Loop ---
@@ -116,7 +116,7 @@ document.addEventListener('DOMContentLoaded', () => {
             appState.subLoopActive = true;
             appState.pendingOrderType = taskTypeCandidate;
             appState.pendingStartTime = startTime;
-            appState.pulledQuantitySum = 0;
+            appState.pulledQuantitySum = 0; // Reset sum accumulator
 
             echoToTerminal(`> ${text}`, '#ffb700');
             echoToTerminal(`--- Order [${taskTypeCandidate}] Product Pull Initiated ---`, '#00ffff');
@@ -138,7 +138,7 @@ document.addEventListener('DOMContentLoaded', () => {
         commitNewTask(taskText, startTime);
     }
 
-    // --- Product Pull Sub-Loop Handler with Summation ---
+    // --- Product Pull Sub-Loop Handler (Strict Mathematical Accumulation) ---
     function handleSubLoopInput(input) {
         const lower = input.toLowerCase();
 
@@ -147,6 +147,7 @@ document.addEventListener('DOMContentLoaded', () => {
             const orderType = appState.pendingOrderType;
             const startTime = appState.pendingStartTime || getSystemTime();
 
+            // Commit final task using ONLY the aggregated sum
             const finalDescription = `Order ${orderType} [Pulled Qty: ${appState.pulledQuantitySum}]`;
 
             commitNewTask(finalDescription, startTime);
@@ -156,7 +157,7 @@ document.addEventListener('DOMContentLoaded', () => {
             return;
         }
 
-        // Parse quantity and add to running sum
+        // Parse input as a number and add to running total
         const qty = parseFloat(input);
         if (isNaN(qty)) {
             echoToTerminal(`[ERROR] Invalid quantity "${input}". Please enter a valid number or type "done".`, '#ff3333');
@@ -164,7 +165,7 @@ document.addEventListener('DOMContentLoaded', () => {
         }
 
         appState.pulledQuantitySum += qty;
-        echoToTerminal(`> [Qty] ${input}`, '#ffb700');
+        echoToTerminal(`> [Qty Added: ${qty}]`, '#ffb700');
         echoToTerminal(`[Running Total: ${appState.pulledQuantitySum}] Enter next quantity or type "done".`, '#888888');
     }
 
