@@ -14,7 +14,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // Boot message
     echoToTerminal('SYSTEM ONLINE: TermiTask v1.0', '#00ffff');
-    echoToTerminal('Awaiting input... Type tasks to build schedule.', '#888888');
+    echoToTerminal('Awaiting input... Type tasks to build schedule. Type "help" for options.', '#888888');
 
     // Main input loop with global error boundary
     cmdInput.addEventListener('keydown', (event) => {
@@ -43,6 +43,12 @@ document.addEventListener('DOMContentLoaded', () => {
     // --- Command Router ---
     function handleInput(text) {
         const lower = text.toLowerCase();
+
+        // 0. Help Command
+        if (lower === 'help') {
+            printHelpMenu();
+            return;
+        }
 
         // 1. Clear Command
         if (lower === 'clear') {
@@ -97,6 +103,18 @@ document.addEventListener('DOMContentLoaded', () => {
         echoToTerminal(`[${startTime}] Task Queued: ${text}`, '#00ff66');
     }
 
+    // --- Help Menu ---
+    function printHelpMenu() {
+        echoToTerminal('=== AVAILABLE COMMANDS ===', '#ffb700');
+        echoToTerminal('  help               - Displays this help menu', '#00ffff');
+        echoToTerminal('  list / tasks       - View current numbered task timeline', '#00ffff');
+        echoToTerminal('  preview / csv      - Preview active timeline formatted as CSV data', '#00ffff');
+        echoToTerminal('  stats / status     - Display total logged tasks and active task metrics', '#00ffff');
+        echoToTerminal('  edit <num> <text>  - Modify an existing task description by index number', '#00ffff');
+        echoToTerminal('  clear              - Wipe terminal screen and reset task queue', '#ff3333');
+        echoToTerminal('  [Any other text]   - Automatically queues a new sequential task', '#888888');
+    }
+
     // --- Task Editing Logic ---
     function handleEditCommand(text) {
         const parts = text.trim().split(/\s+/);
@@ -127,7 +145,7 @@ document.addEventListener('DOMContentLoaded', () => {
             return;
         }
 
-        echoToTerminal('--- Current Task Schedule ---', '#00ffff');
+        echoToTerminal('--- Current Task Schedule ---', '#ffb700');
         appState.tasks.forEach((t, index) => {
             const endTime = t.end ? t.end : 'RUNNING...';
             echoToTerminal(`[${index + 1}] [${t.start} -> ${endTime}] ${t.text}`, '#ffffff');
