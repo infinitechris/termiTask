@@ -1,52 +1,49 @@
-import { handleOrderMode } from './orderMode.js';
-import { handleTaskEntry } from './tasks.js';
-import { handleCommands } from './utils.js';
+// engine.js - Core application entry point and event loop for termiTask
 
-export let saved = JSON.parse(localStorage.getItem('tasks') || '[]');
-export let output, input, activeText;
-export let state = { step: 0, entry: {}, orderMode: false, subStep: 0, currentOrder: {} };
-
-function processInput() {
-    const val = input.value.trim();
-    if (!val) return;
-    try {
-        if (state.orderMode) {
-            handleOrderMode(val);
-        } else {
-            const handled = handleCommands(val);
-            if (!handled) {
-                handleTaskEntry(val);
-            }
-        }
-        input.value = '';
-    } catch (err) {
-        output.innerHTML += `<div style="color: red;">[ERROR] ${err.message}</div>`;
-    }
-    window.scrollTo(0, document.body.scrollHeight);
-}
+import { handleCommands, sanitizeInput } from './utils.js';
+import { handleTaskEntry } from './tasks.js'; // Adjust path if tasks.js is located elsewhere
 
 document.addEventListener('DOMContentLoaded', () => {
-    output = document.getElementById('output');
-    input = document.getElementById('cmd');
-    activeText = document.getElementById('active-text');
+    const cmdInput = document.getElementById('cmd');
+    const outputElement = document.getElementById('output');
+    const activeText = document.getElementById('active-text');
 
-    if (!input || !output) {
-        document.body.innerHTML += `<div style="color: red;">[CRITICAL] Elements #cmd or #output not found!</div>`;
-        return;
+    // Basic app state tracker if needed for stats or tasks
+    const appState = {
+        tasks: []
+    };
+
+    // Auto-focus the input box on load and keep it focused
+    if (cmdInput) {
+        cmdInput.focus();
+        document.addEventListener('click', () => cmdInput.focus());
     }
 
-    saved.forEach(s => output.innerHTML += `<div class="log-entry">[SAVED] ${s}</div>`);
+    if (cmdInput && outputElement) {
+        cmdInput.addEventListener('keydown', (event) => {
+            if (event.key === 'Enter') {
+                const rawValue = cmdInput.value;
+                const cleanValue = sanitizeInput(rawValue);
 
-    // Handle desktop keydown
-    input.addEventListener('keydown', (e) => {
-        if (e.key === 'Enter' || e.keyCode === 13) {
-            e.preventDefault();
-            processInput();
-        }
-    });
+                if (!cleanValue.trim()) return;
 
-    // Handle mobile virtual keyboard "Go" / "Enter" actions via input change or form submission if wrapped
-    input.addEventListener('search', () => {
-        processInput();
-    });
+                // Echo the user command to the terminal output
+                outputElement.innerHTML += `<div><span style="color: #ffb700;">></span> ${cleanValue}</div>`;
+
+                // 1. First, check if it's an utility command (clear, matrix, stats, etc.)
+                const wasHandled = handleCommands(cleanValue, outputElement, appState);
+
+                // 2. If it wasn't a utility command, treat it as a task entry
+                if (!wasHandled) {
+                    const taskResult = handleTaskEntry(cleanValue);
+                    appState.tasks.push(taskResult);
+                    outputElement.innerHTML += `<div style="color: #00ff66;">[${taskResult.time}] Task logged: ${taskResult.text}</div>`;
+                }
+
+                // Clear input and scroll output to the bottom
+                cmdInput.value = '';
+                outputElement.scrollTop = outputElement.scrollHeight;
+            }
+        });
+    }
 });
