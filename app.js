@@ -1,4 +1,4 @@
-// app.js - TermiTask Production Line Engine (Station 2 Corrected)
+// app.js - TermiTask Production Line Engine (Station 2 Finalized)
 
 document.addEventListener('DOMContentLoaded', () => {
     const cmdInput = document.getElementById('cmd');
@@ -78,7 +78,7 @@ document.addEventListener('DOMContentLoaded', () => {
             return;
         }
 
-        // 5. Safe Clear Command (`clear [everything|screen|cancel]`)
+        // 5. Streamlined Safe Clear Command (`clear [everything|screen]`)
         if (cmd === 'clear') {
             handleClearCommand(parts[1]);
             return;
@@ -181,7 +181,6 @@ document.addEventListener('DOMContentLoaded', () => {
             echoToTerminal('[WARN] Safe clear initiated. Choose an option:', '#ffb700');
             echoToTerminal('  > clear screen      (clears view, preserves task queue)', '#888888');
             echoToTerminal('  > clear everything  (wipes screen and deletes task queue)', '#888888');
-            echoToTerminal('  > clear cancel      (aborts command)', '#888888');
             return;
         }
 
@@ -192,10 +191,8 @@ document.addEventListener('DOMContentLoaded', () => {
         } else if (target === 'screen') {
             outputElement.innerHTML = '';
             echoToTerminal('[SYSTEM] Terminal screen cleared. Queue preserved.', '#ffb700');
-        } else if (target === 'cancel') {
-            echoToTerminal('[INFO] Clear operation cancelled.', '#888888');
         } else {
-            echoToTerminal(`[ERROR] Unknown clear modifier "${mode}". Use: screen, everything, or cancel.`, '#ff3333');
+            echoToTerminal(`[ERROR] Unknown clear modifier "${mode}". Use: screen or everything.`, '#ff3333');
         }
     }
 
