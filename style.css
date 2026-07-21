@@ -1,21 +1,75 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>TermiTask Production Line</title>
-    <link rel="stylesheet" href="style.css">
-</head>
-<body>
+* {
+    box-sizing: border-box;
+    margin: 0;
+    padding: 0;
+}
 
-    <div id="terminal">
-        <div id="output"></div>
-        <div id="input-line">
-            <span class="prompt-symbol">></span>
-            <input type="text" id="cmd" autofocus autocomplete="off" spellcheck="false" placeholder="Type a task or command..." />
-        </div>
-    </div>
+body {
+    background-color: #0d1117;
+    color: #00ff66;
+    font-family: 'Courier New', Courier, monospace;
+    height: 100vh;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+}
 
-    <script src="app.js"></script>
-</body>
-</html>
+#terminal {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    padding: 20px;
+    overflow: hidden;
+}
+
+#output {
+    flex: 1;
+    overflow-y: auto;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    padding-bottom: 10px;
+    scroll-behavior: smooth;
+}
+
+#input-line {
+    display: flex;
+    align-items: center;
+    background-color: #161b22;
+    border: 1px solid #30363d;
+    border-radius: 4px;
+    padding: 10px 14px;
+    margin-top: 10px;
+}
+
+.prompt-symbol {
+    color: #ffb700;
+    font-weight: bold;
+    margin-right: 10px;
+}
+
+#cmd {
+    flex: 1;
+    background: transparent;
+    border: none;
+    color: #ffffff;
+    font-family: 'Courier New', Courier, monospace;
+    font-size: 1rem;
+    outline: none;
+}
+
+/* Custom scrollbar for terminal aesthetic */
+::-webkit-scrollbar {
+    width: 8px;
+}
+::-webkit-scrollbar-track {
+    background: #0d1117;
+}
+::-webkit-scrollbar-thumb {
+    background: #30363d;
+    border-radius: 4px;
+}
+::-webkit-scrollbar-thumb:hover {
+    background: #8b949e;
+}
+```[cite: 1]
