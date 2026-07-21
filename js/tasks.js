@@ -1,5 +1,3 @@
-import { state, output, activeText, saved } from './engine.js';
-
 export function handleTaskEntry(inputVal) {
     // Example: parse input to see if a manual time was provided (e.g., "Finish report @ 14:30")
     const timeMatch = inputVal.match(/@\s*(\d{2}:\d{2})/);
