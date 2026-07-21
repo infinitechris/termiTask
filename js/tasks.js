@@ -1,21 +1,23 @@
-export function handleTaskEntry(inputVal) {
-    // Example: parse input to see if a manual time was provided (e.g., "Finish report @ 14:30")
-    const timeMatch = inputVal.match(/@\s*(\d{2}:\d{2})/);
-    
-    let taskText = inputVal;
-    let taskTime;
+// tasks.js - Task handling and sequential timing logic
 
-    if (timeMatch) {
-        taskTime = timeMatch[1]; // Use manually specified 24h time
-        taskText = inputVal.replace(timeMatch[0], '').trim(); // Strip time from task name
-    } else {
-        // Fallback to current time in your preferred 24h format
-        const now = new Date();
-        taskTime = `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`;
+export function handleTaskEntry(inputVal, appState, outputElement) {
+    const now = new Date();
+    const startTime = `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`;
+
+    const newTask = {
+        text: inputVal.trim(),
+        start: startTime,
+        end: null
+    };
+
+    // If there is a previous task, close it out with the current start time
+    if (appState.tasks.length > 0) {
+        const prevTask = appState.tasks[appState.tasks.length - 1];
+        if (!prevTask.end) {
+            prevTask.end = startTime;
+        }
     }
 
-    return {
-        text: taskText,
-        time: taskTime
-    };
+    appState.tasks.push(newTask);
+    return newTask;
 }
