@@ -1,4 +1,4 @@
-// app.js - TermiTask Production Line Engine (True Quantity Summation)
+// app.js - TermiTask Production Line Engine (Enhanced T/C Order Parsing & Summation)
 
 document.addEventListener('DOMContentLoaded', () => {
     const cmdInput = document.getElementById('cmd');
@@ -9,7 +9,7 @@ document.addEventListener('DOMContentLoaded', () => {
         tasks: [],
         // Sub-loop state for T/C product pulling
         subLoopActive: false,
-        pendingOrderType: null,
+        pendingOrderIdentifier: null,
         pendingStartTime: null,
         pulledQuantitySum: 0
     };
@@ -18,7 +18,7 @@ document.addEventListener('DOMContentLoaded', () => {
     document.addEventListener('click', () => cmdInput.focus());
 
     // Boot message
-    echoToTerminal('SYSTEM ONLINE: TermiTask v1.0 [Numeric Summation Active]', '#00ffff');
+    echoToTerminal('SYSTEM ONLINE: TermiTask v1.0 [Enhanced Order Parsing Active]', '#00ffff');
     echoToTerminal('Awaiting input... Type tasks to build schedule. Type "help" for options.', '#888888');
 
     // --- Global Error Boundary & Input Loop ---
@@ -109,17 +109,27 @@ document.addEventListener('DOMContentLoaded', () => {
             taskDescriptionParts = parts.slice(1);
         }
 
-        const taskTypeCandidate = taskDescriptionParts.join(' ').trim().toUpperCase();
+        const candidateToken = taskDescriptionParts.join(' ').trim();
+        const upperCandidate = candidateToken.toUpperCase();
 
-        // --- Trigger Product Pull Sub-Loop for 'T' or 'C' ---
-        if ((taskTypeCandidate === 'T' || taskTypeCandidate === 'C') && taskDescriptionParts.length === 1) {
+        // --- Enhanced T/C Order Validation & Sub-Loop Trigger ---
+        // Tech Order Regex: T followed by exactly 4 digits (e.g., T1030)
+        const techOrderRegex = /^T\d{4}$/;
+        // Contractor Order Regex: C followed by a dash and letters (e.g., C-PBIT)
+        const contractorOrderRegex = /^C-[A-Z]+$/i;
+
+        const isStandaloneTC = (upperCandidate === 'T' || upperCandidate === 'C');
+        const isTechOrder = techOrderRegex.test(upperCandidate);
+        const isContractorOrder = contractorOrderRegex.test(candidateToken);
+
+        if ((isStandaloneTC || isTechOrder || isContractorOrder) && taskDescriptionParts.length === 1) {
             appState.subLoopActive = true;
-            appState.pendingOrderType = taskTypeCandidate;
+            // Standardize generic T or C to base label, or keep specific ID (e.g. T1030 / C-PBIT)
+            appState.pendingOrderIdentifier = isStandaloneTC ? `Order ${upperCandidate}` : `Order ${candidateToken}`;
             appState.pendingStartTime = startTime;
             appState.pulledQuantitySum = 0; // Reset sum accumulator
 
-            echoToTerminal(`> ${text}`, '#ffb700');
-            echoToTerminal(`--- Order [${taskTypeCandidate}] Product Pull Initiated ---`, '#00ffff');
+            echoToTerminal(`--- ${appState.pendingOrderIdentifier} Product Pull Initiated ---`, '#00ffff');
             echoToTerminal('Enter quantities to sum. Type "done" or leave blank when finished.', '#888888');
             return;
         }
@@ -144,14 +154,14 @@ document.addEventListener('DOMContentLoaded', () => {
 
         if (!input || lower === 'done' || lower === 'finish') {
             appState.subLoopActive = false;
-            const orderType = appState.pendingOrderType;
+            const orderIdentifier = appState.pendingOrderIdentifier;
             const startTime = appState.pendingStartTime || getSystemTime();
 
-            // Commit final task using ONLY the aggregated sum
-            const finalDescription = `Order ${orderType} [Pulled Qty: ${appState.pulledQuantitySum}]`;
+            // Commit final task using aggregated identifier and total sum
+            const finalDescription = `${orderIdentifier} [Pulled Qty: ${appState.pulledQuantitySum}]`;
 
             commitNewTask(finalDescription, startTime);
-            appState.pendingOrderType = null;
+            appState.pendingOrderIdentifier = null;
             appState.pendingStartTime = null;
             appState.pulledQuantitySum = 0;
             return;
