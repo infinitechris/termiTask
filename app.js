@@ -2,6 +2,8 @@
 
 // This script serves as the main entry point for the TermiTask application, handling user input, command routing, and task management. It initializes the terminal interface, manages the application state, and provides a responsive user experience for task logging and management.
 
+// Core imports for utility functions and task handling
+
 document.addEventListener('DOMContentLoaded', () => {
     const cmdInput = document.getElementById('cmd');
     const outputElement = document.getElementById('output');
