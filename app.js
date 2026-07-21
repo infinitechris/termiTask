@@ -1,4 +1,4 @@
-// app.js - TermiTask Production Line Engine (Station 2 Complete)
+// app.js - TermiTask Production Line Engine (Station 2 Corrected)
 
 document.addEventListener('DOMContentLoaded', () => {
     const cmdInput = document.getElementById('cmd');
@@ -164,7 +164,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     function handleStatsCommand() {
         const totalTasks = appState.tasks.length;
-        const completedTasks = appState.tasks.filter(t => t.end).inProgress || appState.tasks.filter(t => t.end).length;
+        const completedTasks = appState.tasks.filter(t => t.end).length;
         const activeTask = appState.tasks.find(t => !t.end);
 
         echoToTerminal('--- Session Metrics ---', '#00ffff');
@@ -175,7 +175,15 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     function handleClearCommand(mode) {
-        const target = (mode || 'screen').toLowerCase();
+        const target = mode ? mode.toLowerCase() : null;
+
+        if (!target) {
+            echoToTerminal('[WARN] Safe clear initiated. Choose an option:', '#ffb700');
+            echoToTerminal('  > clear screen      (clears view, preserves task queue)', '#888888');
+            echoToTerminal('  > clear everything  (wipes screen and deletes task queue)', '#888888');
+            echoToTerminal('  > clear cancel      (aborts command)', '#888888');
+            return;
+        }
 
         if (target === 'everything' || target === 'all') {
             outputElement.innerHTML = '';
@@ -187,9 +195,7 @@ document.addEventListener('DOMContentLoaded', () => {
         } else if (target === 'cancel') {
             echoToTerminal('[INFO] Clear operation cancelled.', '#888888');
         } else {
-            // Default safe prompt behavior if no valid modifier given
-            outputElement.innerHTML = '';
-            echoToTerminal('[SYSTEM] Terminal screen cleared. (Use "clear everything" to wipe data queue).', '#ffb700');
+            echoToTerminal(`[ERROR] Unknown clear modifier "${mode}". Use: screen, everything, or cancel.`, '#ff3333');
         }
     }
 
