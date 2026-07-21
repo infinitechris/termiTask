@@ -1,7 +1,7 @@
 // engine.js - Core application entry point and event loop for termiTask
 
 import { handleCommands, sanitizeInput } from './utils.js';
-import { handleTaskEntry } from './tasks.js';
+import { handleTaskEntry } from './js/tasks.js';
 
 document.addEventListener('DOMContentLoaded', () => {
     const cmdInput = document.getElementById('cmd');

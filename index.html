@@ -3,21 +3,20 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>termiTask</title>
-    <!-- Add your CSS link here if you have a stylesheet -->
-    <link rel="stylesheet" href="./style.css">
+    <title>TermiTask Production Line</title>
+    <link rel="stylesheet" href="style.css">
 </head>
 <body>
 
-    <div id="app">
+    <div id="terminal">
         <div id="output"></div>
-        <div id="input-container">
-            <span id="active-text"></span>
-            <input type="text" id="cmd" inputmode="text" autocomplete="off" autofocus>
+        <div id="input-line">
+            <span class="prompt-symbol">></span>
+            <input type="text" id="cmd" autofocus autocomplete="off" spellcheck="false" placeholder="Type a task or command..." />
         </div>
     </div>
 
-    <!-- Main module script pointing to your cleaned engine.js file -->
-    <script type="module" src="./js/engine.js"></script>
+    <script src="app.js"></script>
 </body>
 </html>
+```[cite: 2]
