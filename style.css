@@ -1,0 +1,63 @@
+body {
+    background-color: #121212;
+    color: #00ff66; /* Classic terminal green (or use #00ffff for cyan) */
+    font-family: 'Courier New', Courier, monospace;
+    margin: 0;
+    padding: 16px;
+    display: flex;
+    flex-direction: column;
+    height: 100vh;
+    box-sizing: border-box;
+}
+
+#app {
+    display: flex;
+    flex-direction: column;
+    flex-grow: 1;
+    overflow: hidden;
+}
+
+#output {
+    flex-grow: 1;
+    overflow-y: auto;
+    white-space: pre-wrap;
+    word-break: break-word;
+    margin-bottom: 12px;
+    padding-right: 8px;
+}
+
+#input-container {
+    display: flex;
+    align-items: center;
+    background-color: #1a1a1a;
+    border: 1px solid #333;
+    padding: 8px 12px;
+    border-radius: 4px;
+}
+
+#active-text {
+    margin-right: 8px;
+    color: #ffb700;
+}
+
+#cmd {
+    background: transparent;
+    border: none;
+    color: #00ff66;
+    font-family: 'Courier New', Courier, monospace;
+    font-size: 1rem;
+    outline: none;
+    flex-grow: 1;
+}
+
+/* Custom scrollbar to keep it sleek */
+::-webkit-scrollbar {
+    width: 6px;
+}
+::-webkit-scrollbar-track {
+    background: #121212;
+}
+::-webkit-scrollbar-thumb {
+    background: #333;
+    border-radius: 3px;
+}
