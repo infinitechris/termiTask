@@ -1,4 +1,4 @@
-// app.js - TermiTask Production Line Engine (Refined Task Entry & Product Pulls)
+// app.js - TermiTask Production Line Engine (Product Pull Sub-Loop with Summation)
 
 document.addEventListener('DOMContentLoaded', () => {
     const cmdInput = document.getElementById('cmd');
@@ -11,14 +11,14 @@ document.addEventListener('DOMContentLoaded', () => {
         subLoopActive: false,
         pendingOrderType: null,
         pendingStartTime: null,
-        pulledItems: []
+        pulledQuantitySum: 0
     };
 
     // Keep focus locked on the input box
     document.addEventListener('click', () => cmdInput.focus());
 
     // Boot message
-    echoToTerminal('SYSTEM ONLINE: TermiTask v1.0 [Refined Entry Active]', '#00ffff');
+    echoToTerminal('SYSTEM ONLINE: TermiTask v1.0 [Product Summation Active]', '#00ffff');
     echoToTerminal('Awaiting input... Type tasks to build schedule. Type "help" for options.', '#888888');
 
     // --- Global Error Boundary & Input Loop ---
@@ -116,18 +116,17 @@ document.addEventListener('DOMContentLoaded', () => {
             appState.subLoopActive = true;
             appState.pendingOrderType = taskTypeCandidate;
             appState.pendingStartTime = startTime;
-            appState.pulledItems = [];
+            appState.pulledQuantitySum = 0;
 
             echoToTerminal(`> ${text}`, '#ffb700');
             echoToTerminal(`--- Order [${taskTypeCandidate}] Product Pull Initiated ---`, '#00ffff');
-            echoToTerminal('Enter product quantities one by one. Type "done" or leave blank when finished.', '#888888');
+            echoToTerminal('Enter quantities to sum. Type "done" or leave blank when finished.', '#888888');
             return;
         }
 
         // Fallback to current system clock if no start time provided
         if (!startTime) {
-            const now = new Date();
-            startTime = `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`;
+            startTime = getSystemTime();
         }
 
         const taskText = taskDescriptionParts.join(' ');
@@ -139,7 +138,7 @@ document.addEventListener('DOMContentLoaded', () => {
         commitNewTask(taskText, startTime);
     }
 
-    // --- Product Pull Sub-Loop Handler ---
+    // --- Product Pull Sub-Loop Handler with Summation ---
     function handleSubLoopInput(input) {
         const lower = input.toLowerCase();
 
@@ -148,22 +147,25 @@ document.addEventListener('DOMContentLoaded', () => {
             const orderType = appState.pendingOrderType;
             const startTime = appState.pendingStartTime || getSystemTime();
 
-            let finalDescription = `Order ${orderType}`;
-            if (appState.pulledItems.length > 0) {
-                finalDescription += ` [Pulled: ${appState.pulledItems.join(', ')}]`;
-            }
+            const finalDescription = `Order ${orderType} [Pulled Qty: ${appState.pulledQuantitySum}]`;
 
             commitNewTask(finalDescription, startTime);
             appState.pendingOrderType = null;
             appState.pendingStartTime = null;
-            appState.pulledItems = [];
+            appState.pulledQuantitySum = 0;
             return;
         }
 
-        // Echo and record quantity input
+        // Parse quantity and add to running sum
+        const qty = parseFloat(input);
+        if (isNaN(qty)) {
+            echoToTerminal(`[ERROR] Invalid quantity "${input}". Please enter a valid number or type "done".`, '#ff3333');
+            return;
+        }
+
+        appState.pulledQuantitySum += qty;
         echoToTerminal(`> [Qty] ${input}`, '#ffb700');
-        appState.pulledItems.push(input);
-        echoToTerminal(`[Logged Qty: ${input}] Enter next quantity or type "done".`, '#888888');
+        echoToTerminal(`[Running Total: ${appState.pulledQuantitySum}] Enter next quantity or type "done".`, '#888888');
     }
 
     // --- Core Task Commitment Helper ---
