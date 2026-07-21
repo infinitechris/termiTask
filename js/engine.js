@@ -35,9 +35,8 @@ document.addEventListener('DOMContentLoaded', () => {
 
                 // 2. If it wasn't a utility command, process it through tasks.js
                 if (!wasHandled) {
-                    const taskResult = handleTaskEntry(cleanValue);
-                    appState.tasks.push(taskResult);
-                    outputElement.innerHTML += `<div style="color: #00ff66;">[${taskResult.time}] Task logged: ${taskResult.text}</div>`;
+                    const taskResult = handleTaskEntry(cleanValue, appState, outputElement);
+                    outputElement.innerHTML += `<div style="color: #00ff66;">[${taskResult.start}] Started: ${taskResult.text}</div>`;
                 }
 
                 // Clear input and scroll output to the bottom
