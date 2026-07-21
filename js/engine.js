@@ -1,14 +1,14 @@
 // engine.js - Core application entry point and event loop for termiTask
 
 import { handleCommands, sanitizeInput } from './utils.js';
-import { handleTaskEntry } from './tasks.js'; // Adjust path if tasks.js is located elsewhere
+import { handleTaskEntry } from './tasks.js';
 
 document.addEventListener('DOMContentLoaded', () => {
     const cmdInput = document.getElementById('cmd');
     const outputElement = document.getElementById('output');
     const activeText = document.getElementById('active-text');
 
-    // Basic app state tracker if needed for stats or tasks
+    // Basic app state tracker for tasks and stats
     const appState = {
         tasks: []
     };
@@ -30,10 +30,10 @@ document.addEventListener('DOMContentLoaded', () => {
                 // Echo the user command to the terminal output
                 outputElement.innerHTML += `<div><span style="color: #ffb700;">></span> ${cleanValue}</div>`;
 
-                // 1. First, check if it's an utility command (clear, matrix, stats, etc.)
+                // 1. First, check if it's a utility command (clear, matrix, stats, etc.)
                 const wasHandled = handleCommands(cleanValue, outputElement, appState);
 
-                // 2. If it wasn't a utility command, treat it as a task entry
+                // 2. If it wasn't a utility command, process it through tasks.js
                 if (!wasHandled) {
                     const taskResult = handleTaskEntry(cleanValue);
                     appState.tasks.push(taskResult);
