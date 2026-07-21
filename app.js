@@ -1,4 +1,4 @@
-// app.js - TermiTask Production Line Engine (Station 2 Complete)
+// app.js - TermiTask Production Line Engine (Refined Task Entry & Product Pulls)
 
 document.addEventListener('DOMContentLoaded', () => {
     const cmdInput = document.getElementById('cmd');
@@ -6,14 +6,19 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // Central application state
     const appState = {
-        tasks: []
+        tasks: [],
+        // Sub-loop state for T/C product pulling
+        subLoopActive: false,
+        pendingOrderType: null,
+        pendingStartTime: null,
+        pulledItems: []
     };
 
     // Keep focus locked on the input box
     document.addEventListener('click', () => cmdInput.focus());
 
     // Boot message
-    echoToTerminal('SYSTEM ONLINE: TermiTask v1.0 [Station 2 Complete]', '#00ffff');
+    echoToTerminal('SYSTEM ONLINE: TermiTask v1.0 [Refined Entry Active]', '#00ffff');
     echoToTerminal('Awaiting input... Type tasks to build schedule. Type "help" for options.', '#888888');
 
     // --- Global Error Boundary & Input Loop ---
@@ -22,16 +27,23 @@ document.addEventListener('DOMContentLoaded', () => {
             const rawInput = cmdInput.value;
             const input = rawInput.trim();
 
-            if (!input) return;
+            if (!input && !appState.subLoopActive) return;
 
-            // Echo the user prompt
-            echoToTerminal(`> ${input}`, '#ffb700');
+            // Echo user prompt (if not waiting for sub-loop quantity input)
+            if (!appState.subLoopActive && input) {
+                echoToTerminal(`> ${input}`, '#ffb700');
+            }
 
             try {
-                handleInput(input);
+                if (appState.subLoopActive) {
+                    handleSubLoopInput(input);
+                } else {
+                    handleInput(input);
+                }
             } catch (error) {
                 console.error("Terminal Error:", error);
                 echoToTerminal(`[SYSTEM FAULT] ${error.message || 'An unexpected error occurred.'}`, '#ff3333');
+                appState.subLoopActive = false; // Reset sub-loop on fault
             }
 
             // Reset input box and snap scroll to the bottom
@@ -42,7 +54,6 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // --- Command Router ---
     function handleInput(text) {
-        const lower = text.toLowerCase();
         const parts = text.trim().split(/\s+/);
         const cmd = parts[0].toLowerCase();
 
@@ -51,8 +62,6 @@ document.addEventListener('DOMContentLoaded', () => {
             echoToTerminal('Help system offline. Unlock Station 3 to enable guidance.', '#ff3333');
             return;
         }
-
-        // --- Station 2: Review & Inspection Commands ---
 
         // 1. List / Tasks Command
         if (cmd === 'list' || cmd === 'tasks') {
@@ -66,7 +75,7 @@ document.addEventListener('DOMContentLoaded', () => {
             return;
         }
 
-        // 3. Edit Command (`edit <number> [start|end|HH:MM] [...]`)
+        // 3. Edit Command
         if (cmd === 'edit') {
             handleEditCommand(parts);
             return;
@@ -78,22 +87,87 @@ document.addEventListener('DOMContentLoaded', () => {
             return;
         }
 
-        // 5. Streamlined Safe Clear Command (`clear [everything|screen]`)
+        // 5. Clear Command
         if (cmd === 'clear') {
             handleClearCommand(parts[1]);
             return;
         }
 
-        // --- Core Task Engine: Stop / End Command ---
+        // 6. Stop / End Command
         if (cmd === 'stop' || cmd === 'end' || cmd === 'done') {
             handleStopCommand();
             return;
         }
 
-        // --- Station 1: Automated 24-Hour Timestamp & Sequential Engine ---
-        const now = new Date();
-        const startTime = `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`;
+        // --- Task Entry Parsing: Check for Optional Start Time ---
+        const timeRegex = /^([01]\d|2[0-3]):([0-5]\d)$/;
+        let startTime = null;
+        let taskDescriptionParts = parts;
 
+        if (timeRegex.test(parts[0])) {
+            startTime = parts[0];
+            taskDescriptionParts = parts.slice(1);
+        }
+
+        const taskTypeCandidate = taskDescriptionParts.join(' ').trim().toUpperCase();
+
+        // --- Trigger Product Pull Sub-Loop for 'T' or 'C' ---
+        if ((taskTypeCandidate === 'T' || taskTypeCandidate === 'C') && taskDescriptionParts.length === 1) {
+            appState.subLoopActive = true;
+            appState.pendingOrderType = taskTypeCandidate;
+            appState.pendingStartTime = startTime;
+            appState.pulledItems = [];
+
+            echoToTerminal(`> ${text}`, '#ffb700');
+            echoToTerminal(`--- Order [${taskTypeCandidate}] Product Pull Initiated ---`, '#00ffff');
+            echoToTerminal('Enter product quantities one by one. Type "done" or leave blank when finished.', '#888888');
+            return;
+        }
+
+        // Fallback to current system clock if no start time provided
+        if (!startTime) {
+            const now = new Date();
+            startTime = `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`;
+        }
+
+        const taskText = taskDescriptionParts.join(' ');
+        if (!taskText) {
+            echoToTerminal('[ERROR] Task description cannot be empty.', '#ff3333');
+            return;
+        }
+
+        commitNewTask(taskText, startTime);
+    }
+
+    // --- Product Pull Sub-Loop Handler ---
+    function handleSubLoopInput(input) {
+        const lower = input.toLowerCase();
+
+        if (!input || lower === 'done' || lower === 'finish') {
+            appState.subLoopActive = false;
+            const orderType = appState.pendingOrderType;
+            const startTime = appState.pendingStartTime || getSystemTime();
+
+            let finalDescription = `Order ${orderType}`;
+            if (appState.pulledItems.length > 0) {
+                finalDescription += ` [Pulled: ${appState.pulledItems.join(', ')}]`;
+            }
+
+            commitNewTask(finalDescription, startTime);
+            appState.pendingOrderType = null;
+            appState.pendingStartTime = null;
+            appState.pulledItems = [];
+            return;
+        }
+
+        // Echo and record quantity input
+        echoToTerminal(`> [Qty] ${input}`, '#ffb700');
+        appState.pulledItems.push(input);
+        echoToTerminal(`[Logged Qty: ${input}] Enter next quantity or type "done".`, '#888888');
+    }
+
+    // --- Core Task Commitment Helper ---
+    function commitNewTask(text, startTime) {
         const newTask = {
             text: text,
             start: startTime,
@@ -110,6 +184,11 @@ document.addEventListener('DOMContentLoaded', () => {
 
         appState.tasks.push(newTask);
         echoToTerminal(`[${startTime}] Task Queued: ${text}`, '#00ff66');
+    }
+
+    function getSystemTime() {
+        const now = new Date();
+        return `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`;
     }
 
     // --- Station 2 Feature Handlers ---
@@ -158,7 +237,6 @@ document.addEventListener('DOMContentLoaded', () => {
         const task = appState.tasks[index];
         const timeRegex = /^([01]\d|2[0-3]):([0-5]\d)$/;
 
-        // Scenario A: Explicit target field specified -> edit <number> <start|end> <HH:MM> [optional new text]
         if (parts.length >= 4 && (parts[2].toLowerCase() === 'start' || parts[2].toLowerCase() === 'end')) {
             const targetField = parts[2].toLowerCase();
             const newTime = parts[3];
@@ -171,7 +249,6 @@ document.addEventListener('DOMContentLoaded', () => {
             const oldTime = task[targetField] || 'IN PROGRESS';
             task[targetField] = newTime;
             
-            // Check if they also included a new text description after the timestamp
             let updateMsg = `[SUCCESS] Task #${index + 1} ${targetField} time updated: ${oldTime} -> ${newTime}`;
             if (parts.length > 4) {
                 const newText = parts.slice(4).join(' ');
@@ -184,7 +261,6 @@ document.addEventListener('DOMContentLoaded', () => {
             return;
         }
 
-        // Scenario B: Only a time is passed -> edit <number> <HH:MM> (Ambiguous: Start or End?)
         if (parts.length === 3 && timeRegex.test(parts[2])) {
             const timeVal = parts[2];
             echoToTerminal(`[WARN] Ambiguous timestamp for Task #${index + 1}. Do you want to update the start or end time?`, '#ffb700');
@@ -193,7 +269,6 @@ document.addEventListener('DOMContentLoaded', () => {
             return;
         }
 
-        // Scenario C: Standard edit with optional start time + text OR pure text update -> edit <number> [HH:MM] <text>
         let newStart = null;
         let textStartIndex = 2;
 
@@ -254,7 +329,6 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }
 
-    // --- Core Task Engine: Stop Command ---
     function handleStopCommand() {
         if (appState.tasks.length === 0) {
             echoToTerminal('[INFO] No active tasks to stop.', '#888888');
@@ -267,14 +341,12 @@ document.addEventListener('DOMContentLoaded', () => {
             return;
         }
 
-        const now = new Date();
-        const endTime = `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`;
+        const endTime = getSystemTime();
         lastTask.end = endTime;
 
         echoToTerminal(`[${endTime}] Active task closed. System idling.`, '#ffb700');
     }
 
-    // --- Display Helper ---
     function echoToTerminal(text, color = '#00ff66') {
         const div = document.createElement('div');
         div.style.color = color;
