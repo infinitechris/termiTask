@@ -1,8 +1,4 @@
-// app.js - TermiTask Production Line Engine
-
-// This script serves as the main entry point for the TermiTask application, handling user input, command routing, and task management. It initializes the terminal interface, manages the application state, and provides a responsive user experience for task logging and management.
-
-// Core imports for utility functions and task handling
+// app.js - TermiTask Production Line Engine (v1.0 + Stop Command)
 
 document.addEventListener('DOMContentLoaded', () => {
     const cmdInput = document.getElementById('cmd');
@@ -62,25 +58,31 @@ document.addEventListener('DOMContentLoaded', () => {
             return;
         }
 
-        // 2. List Command
+        // 2. Stop / End Command
+        if (lower === 'stop' || lower === 'end' || lower === 'done') {
+            handleStopCommand();
+            return;
+        }
+
+        // 3. List Command
         if (lower === 'list' || lower === 'tasks') {
             printTaskList();
             return;
         }
 
-        // 3. Preview/CSV Command
+        // 4. Preview/CSV Command
         if (lower === 'preview' || lower === 'csv') {
             printCsvPreview();
             return;
         }
 
-        // 4. Stats / Status Command
+        // 5. Stats / Status Command
         if (lower === 'stats' || lower === 'status') {
             printStats();
             return;
         }
 
-        // 5. Edit Command (Format: edit <index> <new text>)
+        // 6. Edit Command (Format: edit <index> <new text>)
         if (lower.startsWith('edit ')) {
             handleEditCommand(text);
             return;
@@ -111,12 +113,33 @@ document.addEventListener('DOMContentLoaded', () => {
     function printHelpMenu() {
         echoToTerminal('=== AVAILABLE COMMANDS ===', '#ffb700');
         echoToTerminal('  help               - Displays this help menu', '#00ffff');
+        echoToTerminal('  stop / end         - Closes out the current active task without starting a new one', '#00ffff');
         echoToTerminal('  list / tasks       - View current numbered task timeline', '#00ffff');
         echoToTerminal('  preview / csv      - Preview active timeline formatted as CSV data', '#00ffff');
         echoToTerminal('  stats / status     - Display total logged tasks and active task metrics', '#00ffff');
         echoToTerminal('  edit <num> <text>  - Modify an existing task description by index number', '#00ffff');
         echoToTerminal('  clear              - Wipe terminal screen and reset task queue', '#ff3333');
         echoToTerminal('  [Any other text]   - Automatically queues a new sequential task', '#888888');
+    }
+
+    // --- Stop Command Logic ---
+    function handleStopCommand() {
+        if (appState.tasks.length === 0) {
+            echoToTerminal('[INFO] No active tasks to stop.', '#888888');
+            return;
+        }
+
+        const lastTask = appState.tasks[appState.tasks.length - 1];
+        if (lastTask.end) {
+            echoToTerminal('[INFO] Current session is already idle. No running task to close.', '#888888');
+            return;
+        }
+
+        const now = new Date();
+        const endTime = `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`;
+        lastTask.end = endTime;
+
+        echoToTerminal(`[${endTime}] Active task closed. System idling.`, '#ffb700');
     }
 
     // --- Task Editing Logic ---
