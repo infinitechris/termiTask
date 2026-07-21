@@ -1,4 +1,4 @@
-// app.js - TermiTask Production Line Engine (Enhanced T/C Order Parsing & Summation)
+// app.js - TermiTask Production Line Engine (Review, Edit & Safe Deletion)
 
 document.addEventListener('DOMContentLoaded', () => {
     const cmdInput = document.getElementById('cmd');
@@ -7,18 +7,20 @@ document.addEventListener('DOMContentLoaded', () => {
     // Central application state
     const appState = {
         tasks: [],
-        // Sub-loop state for T/C product pulling
+        // Sub-loop states
         subLoopActive: false,
         pendingOrderIdentifier: null,
         pendingStartTime: null,
-        pulledQuantitySum: 0
+        pulledQuantitySum: 0,
+        // Deletion confirmation state
+        pendingDeleteIndex: null
     };
 
     // Keep focus locked on the input box
     document.addEventListener('click', () => cmdInput.focus());
 
     // Boot message
-    echoToTerminal('SYSTEM ONLINE: TermiTask v1.0 [Enhanced Order Parsing Active]', '#00ffff');
+    echoToTerminal('SYSTEM ONLINE: TermiTask v1.0 [Delete Protection Active]', '#00ffff');
     echoToTerminal('Awaiting input... Type tasks to build schedule. Type "help" for options.', '#888888');
 
     // --- Global Error Boundary & Input Loop ---
@@ -27,23 +29,26 @@ document.addEventListener('DOMContentLoaded', () => {
             const rawInput = cmdInput.value;
             const input = rawInput.trim();
 
-            if (!input && !appState.subLoopActive) return;
+            if (!input && !appState.subLoopActive && appState.pendingDeleteIndex === null) return;
 
-            // Echo user prompt (if not waiting for sub-loop quantity input)
-            if (!appState.subLoopActive && input) {
+            // Echo user prompt (if not waiting for a multi-step sub-loop/confirmation)
+            if (!appState.subLoopActive && appState.pendingDeleteIndex === null && input) {
                 echoToTerminal(`> ${input}`, '#ffb700');
             }
 
             try {
                 if (appState.subLoopActive) {
                     handleSubLoopInput(input);
+                } else if (appState.pendingDeleteIndex !== null) {
+                    handleDeleteConfirmation(input);
                 } else {
                     handleInput(input);
                 }
             } catch (error) {
                 console.error("Terminal Error:", error);
                 echoToTerminal(`[SYSTEM FAULT] ${error.message || 'An unexpected error occurred.'}`, '#ff3333');
-                appState.subLoopActive = false; // Reset sub-loop on fault
+                appState.subLoopActive = false;
+                appState.pendingDeleteIndex = null;
             }
 
             // Reset input box and snap scroll to the bottom
@@ -75,7 +80,7 @@ document.addEventListener('DOMContentLoaded', () => {
             return;
         }
 
-        // 3. Edit Command
+        // 3. Edit Command (Includes Delete Routing)
         if (cmd === 'edit') {
             handleEditCommand(parts);
             return;
@@ -113,9 +118,7 @@ document.addEventListener('DOMContentLoaded', () => {
         const upperCandidate = candidateToken.toUpperCase();
 
         // --- Enhanced T/C Order Validation & Sub-Loop Trigger ---
-        // Tech Order Regex: T followed by exactly 4 digits (e.g., T1030)
         const techOrderRegex = /^T\d{4}$/;
-        // Contractor Order Regex: C followed by a dash and letters (e.g., C-PBIT)
         const contractorOrderRegex = /^C-[A-Z]+$/i;
 
         const isStandaloneTC = (upperCandidate === 'T' || upperCandidate === 'C');
@@ -124,11 +127,11 @@ document.addEventListener('DOMContentLoaded', () => {
 
         if ((isStandaloneTC || isTechOrder || isContractorOrder) && taskDescriptionParts.length === 1) {
             appState.subLoopActive = true;
-            // Standardize generic T or C to base label, or keep specific ID (e.g. T1030 / C-PBIT)
             appState.pendingOrderIdentifier = isStandaloneTC ? `Order ${upperCandidate}` : `Order ${candidateToken}`;
             appState.pendingStartTime = startTime;
-            appState.pulledQuantitySum = 0; // Reset sum accumulator
+            appState.pulledQuantitySum = 0;
 
+            echoToTerminal(`> ${text}`, '#ffb700');
             echoToTerminal(`--- ${appState.pendingOrderIdentifier} Product Pull Initiated ---`, '#00ffff');
             echoToTerminal('Enter quantities to sum. Type "done" or leave blank when finished.', '#888888');
             return;
@@ -148,7 +151,7 @@ document.addEventListener('DOMContentLoaded', () => {
         commitNewTask(taskText, startTime);
     }
 
-    // --- Product Pull Sub-Loop Handler (Strict Mathematical Accumulation) ---
+    // --- Product Pull Sub-Loop Handler ---
     function handleSubLoopInput(input) {
         const lower = input.toLowerCase();
 
@@ -157,7 +160,6 @@ document.addEventListener('DOMContentLoaded', () => {
             const orderIdentifier = appState.pendingOrderIdentifier;
             const startTime = appState.pendingStartTime || getSystemTime();
 
-            // Commit final task using aggregated identifier and total sum
             const finalDescription = `${orderIdentifier} [Pulled Qty: ${appState.pulledQuantitySum}]`;
 
             commitNewTask(finalDescription, startTime);
@@ -167,9 +169,9 @@ document.addEventListener('DOMContentLoaded', () => {
             return;
         }
 
-        // Parse input as a number and add to running total
         const qty = parseFloat(input);
         if (isNaN(qty)) {
+            echoToTerminal(`> [Qty] ${input}`, '#ffb700');
             echoToTerminal(`[ERROR] Invalid quantity "${input}". Please enter a valid number or type "done".`, '#ff3333');
             return;
         }
@@ -187,7 +189,6 @@ document.addEventListener('DOMContentLoaded', () => {
             end: null
         };
 
-        // Automatic closure of the previous running task
         if (appState.tasks.length > 0) {
             const prevTask = appState.tasks[appState.tasks.length - 1];
             if (!prevTask.end) {
@@ -237,7 +238,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     function handleEditCommand(parts) {
         if (parts.length < 3) {
-            echoToTerminal('[ERROR] Syntax: edit <number> [start|end|HH:MM] <new text>', '#ff3333');
+            echoToTerminal('[ERROR] Syntax: edit <number> [start|end|delete|HH:MM] <new text>', '#ff3333');
             return;
         }
 
@@ -248,10 +249,23 @@ document.addEventListener('DOMContentLoaded', () => {
         }
 
         const task = appState.tasks[index];
+        const actionOrField = parts[2].toLowerCase();
+
+        // --- Handle Delete Request ---
+        if (actionOrField === 'delete' || actionOrField === 'del' || actionOrField === 'remove') {
+            appState.pendingDeleteIndex = index;
+            echoToTerminal(`> edit ${parts[1]} delete`, '#ffb700');
+            echoToTerminal(`[WARNING] Are you sure you want to delete Task #${index + 1}: "${task.text}"? (y/n)`, '#ff3333');
+            return;
+        }
+
         const timeRegex = /^([01]\d|2[0-3]):([0-5]\d)$/;
 
-        if (parts.length >= 4 && (parts[2].toLowerCase() === 'start' || parts[2].toLowerCase() === 'end')) {
-            const targetField = parts[2].toLowerCase();
+        if (actionOrField === 'start' || actionOrField === 'end') {
+            if (parts.length < 4) {
+                echoToTerminal(`[ERROR] Missing time value for ${actionOrField}. Syntax: edit <number> ${actionOrField} HH:MM`, '#ff3333');
+                return;
+            }
             const newTime = parts[3];
 
             if (!timeRegex.test(newTime)) {
@@ -259,10 +273,10 @@ document.addEventListener('DOMContentLoaded', () => {
                 return;
             }
 
-            const oldTime = task[targetField] || 'IN PROGRESS';
-            task[targetField] = newTime;
+            const oldTime = task[actionOrField] || 'IN PROGRESS';
+            task[actionOrField] = newTime;
             
-            let updateMsg = `[SUCCESS] Task #${index + 1} ${targetField} time updated: ${oldTime} -> ${newTime}`;
+            let updateMsg = `[SUCCESS] Task #${index + 1} ${actionOrField} time updated: ${oldTime} -> ${newTime}`;
             if (parts.length > 4) {
                 const newText = parts.slice(4).join(' ');
                 const oldText = task.text;
@@ -306,6 +320,23 @@ document.addEventListener('DOMContentLoaded', () => {
         } else {
             echoToTerminal(`[SUCCESS] Task #${index + 1} text updated from "${oldText}" to "${newText}"`, '#00ff66');
         }
+    }
+
+    // --- Delete Confirmation Handler ---
+    function handleDeleteConfirmation(input) {
+        const lower = input.trim().toLowerCase();
+        const index = appState.pendingDeleteIndex;
+
+        echoToTerminal(`> ${input}`, '#ffb700');
+
+        if (lower === 'y' || lower === 'yes') {
+            const removedTask = appState.tasks.splice(index, 1)[0];
+            echoToTerminal(`[SUCCESS] Task #${index + 1} ("${removedTask.text}") permanently deleted.`, '#ff3333');
+        } else {
+            echoToTerminal(`[CANCELLED] Deletion aborted. Task queue unchanged.`, '#00ff66');
+        }
+
+        appState.pendingDeleteIndex = null;
     }
 
     function handleStatsCommand() {
