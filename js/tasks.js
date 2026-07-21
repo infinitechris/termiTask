@@ -1,26 +1,23 @@
 import { state, output, activeText, saved } from './engine.js';
 
-export function handleTaskEntry(val) {
-    if (state.step === 0) {
-        if (val.toLowerCase() === 't' || val.toLowerCase() === 'c') {
-            state.orderMode = true; state.subStep = 1;
-            state.currentOrder = { type: val === 't' ? 'Tech' : 'Contractor', totalQty: 0, start: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: false }) };
-            output.innerHTML += `<div>> ${val}</div><div>[SYSTEM] Enter ID:</div>`;
-            return;
-        }
-        state.entry.start = val || new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: false });
-        state.step = 1; activeText.innerText = `Active: ${state.entry.start} | Task?`;
-    } else if (state.step === 1) {
-        state.entry.desc = val;
-        state.step = /^\d+$/.test(val) ? 2 : 3;
-        activeText.innerText = `Active: ${state.entry.start} | ${val} | Detail?`;
-    } else if (state.step === 2) {
-        state.entry.detail = val; state.step = 3;
-    } else if (state.step === 3) {
-        const end = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: false });
-        const entryStr = `${state.entry.start} | ${state.entry.desc} | ${state.entry.detail || val} ${state.entry.detail ? ' | ' + val : ''} | End: ${end}`;
-        output.innerHTML += `<div class="log-entry">[SAVED] ${entryStr}</div>`;
-        saved.push(entryStr); localStorage.setItem('tasks', JSON.stringify(saved));
-        state.step = 0; state.entry = {}; activeText.innerText = "System Ready";
+export function handleTaskEntry(inputVal) {
+    // Example: parse input to see if a manual time was provided (e.g., "Finish report @ 14:30")
+    const timeMatch = inputVal.match(/@\s*(\d{2}:\d{2})/);
+    
+    let taskText = inputVal;
+    let taskTime;
+
+    if (timeMatch) {
+        taskTime = timeMatch[1]; // Use manually specified 24h time
+        taskText = inputVal.replace(timeMatch[0], '').trim(); // Strip time from task name
+    } else {
+        // Fallback to current time in your preferred 24h format
+        const now = new Date();
+        taskTime = `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`;
     }
+
+    return {
+        text: taskText,
+        time: taskTime
+    };
 }
