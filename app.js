@@ -1,4 +1,4 @@
-// app.js - TermiTask Production Line Engine (Station 2 Finalized)
+// app.js - TermiTask Production Line Engine (Station 2 Updated)
 
 document.addEventListener('DOMContentLoaded', () => {
     const cmdInput = document.getElementById('cmd');
@@ -66,7 +66,7 @@ document.addEventListener('DOMContentLoaded', () => {
             return;
         }
 
-        // 3. Edit Command (`edit <number> <new text>`)
+        // 3. Edit Command (`edit <number> [HH:MM] <new text>`)
         if (cmd === 'edit') {
             handleEditCommand(parts);
             return;
@@ -145,7 +145,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     function handleEditCommand(parts) {
         if (parts.length < 3) {
-            echoToTerminal('[ERROR] Syntax: edit <number> <new description>', '#ff3333');
+            echoToTerminal('[ERROR] Syntax: edit <number> [HH:MM] <new description>', '#ff3333');
             return;
         }
 
@@ -155,11 +155,33 @@ document.addEventListener('DOMContentLoaded', () => {
             return;
         }
 
-        const newText = parts.slice(2).join(' ');
-        const oldText = appState.tasks[index].text;
-        appState.tasks[index].text = newText;
+        // Check if the third argument is a valid 24-hour timestamp (HH:MM)
+        const timeRegex = /^([01]\d|2[0-3]):([0-5]\d)$/;
+        let newStart = null;
+        let textStartIndex = 2;
 
-        echoToTerminal(`[SUCCESS] Task #${index + 1} updated from "${oldText}" to "${newText}"`, '#00ff66');
+        if (timeRegex.test(parts[2])) {
+            newStart = parts[2];
+            textStartIndex = 3;
+        }
+
+        if (parts.length <= textStartIndex) {
+            echoToTerminal('[ERROR] Missing new task description.', '#ff3333');
+            return;
+        }
+
+        const newText = parts.slice(textStartIndex).join(' ');
+        const task = appState.tasks[index];
+        const oldText = task.text;
+        const oldStart = task.start;
+
+        task.text = newText;
+        if (newStart) {
+            task.start = newStart;
+            echoToTerminal(`[SUCCESS] Task #${index + 1} updated | Time: ${oldStart} -> ${newStart} | Text: "${oldText}" -> "${newText}"`, '#00ff66');
+        } else {
+            echoToTerminal(`[SUCCESS] Task #${index + 1} text updated from "${oldText}" to "${newText}"`, '#00ff66');
+        }
     }
 
     function handleStatsCommand() {
