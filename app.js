@@ -1,4 +1,4 @@
-// app.js - TermiTask Production Line Engine (Review, Edit & Safe Deletion)
+// app.js - TermiTask Production Line Engine (Station 3: Help System Active)
 
 document.addEventListener('DOMContentLoaded', () => {
     const cmdInput = document.getElementById('cmd');
@@ -20,7 +20,7 @@ document.addEventListener('DOMContentLoaded', () => {
     document.addEventListener('click', () => cmdInput.focus());
 
     // Boot message
-    echoToTerminal('SYSTEM ONLINE: TermiTask v1.0 [Delete Protection Active]', '#00ffff');
+    echoToTerminal('SYSTEM ONLINE: TermiTask v1.0 [Help Sub-System Online]', '#00ffff');
     echoToTerminal('Awaiting input... Type tasks to build schedule. Type "help" for options.', '#888888');
 
     // --- Global Error Boundary & Input Loop ---
@@ -62,9 +62,9 @@ document.addEventListener('DOMContentLoaded', () => {
         const parts = text.trim().split(/\s+/);
         const cmd = parts[0].toLowerCase();
 
-        // 0. Help Command (Placeholder for Station 3)
+        // 0. Help Command (Station 3 Online)
         if (cmd === 'help') {
-            echoToTerminal('Help system offline. Unlock Station 3 to enable guidance.', '#ff3333');
+            handleHelpCommand();
             return;
         }
 
@@ -131,7 +131,6 @@ document.addEventListener('DOMContentLoaded', () => {
             appState.pendingStartTime = startTime;
             appState.pulledQuantitySum = 0;
 
-            echoToTerminal(`> ${text}`, '#ffb700');
             echoToTerminal(`--- ${appState.pendingOrderIdentifier} Product Pull Initiated ---`, '#00ffff');
             echoToTerminal('Enter quantities to sum. Type "done" or leave blank when finished.', '#888888');
             return;
@@ -203,6 +202,28 @@ document.addEventListener('DOMContentLoaded', () => {
     function getSystemTime() {
         const now = new Date();
         return `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`;
+    }
+
+    // --- Station 3 Feature Handler: Help System ---
+    function handleHelpCommand() {
+        echoToTerminal('--- TermiTask Command Directory ---', '#00ffff');
+        echoToTerminal('  [Task Entry]:', '#ffb700');
+        echoToTerminal('    <text>                 Start a standard task (auto timestamp)', '#ffffff');
+        echoToTerminal('    [HH:MM] <text>         Start a task with an explicit 24h start time', '#ffffff');
+        echoToTerminal('    T<4 digits> / C-<name> Trigger product pull sub-loop (e.g. T1030, C-PBIT)', '#ffffff');
+        echoToTerminal('    done / stop / end      Close current running task / sub-loop', '#ffffff');
+        echoToTerminal('  [Inspection & Review]:', '#ffb700');
+        echoToTerminal('    list (or tasks)        View active timeline and indices', '#ffffff');
+        echoToTerminal('    preview (or csv)       Inspect raw CSV output string layout', '#ffffff');
+        echoToTerminal('    stats (or status)      View session summary metrics', '#ffffff');
+        echoToTerminal('  [Editing & Maintenance]:', '#ffb700');
+        echoToTerminal('    edit <num> <text>      Update task description text', '#ffffff');
+        echoToTerminal('    edit <num> start HH:MM Override start time', '#ffffff');
+        echoToTerminal('    edit <num> end HH:MM   Override end time', '#ffffff');
+        echoToTerminal('    edit <num> delete      Permanently delete task (with confirmation)', '#ffffff');
+        echoToTerminal('    clear screen           Clear terminal view, preserve queue', '#ffffff');
+        echoToTerminal('    clear everything       Wipe screen and reset task queue', '#ffffff');
+        echoToTerminal('------------------------------------', '#00ffff');
     }
 
     // --- Station 2 Feature Handlers ---
@@ -381,7 +402,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
         const lastTask = appState.tasks[appState.tasks.length - 1];
         if (lastTask.end) {
-            echoToTerminal('[INFO] Current session is already idle. No running task to close.', '#888888');
+            echoToTerminal('[INFO] Current session is already idle. No running task to close.', '#ffb700');
             return;
         }
 
