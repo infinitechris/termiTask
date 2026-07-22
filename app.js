@@ -1,4 +1,4 @@
-// app.js - TermiTask Production Line Engine (Sequential Push Hotfix)
+// app.js - TermiTask Production Line Engine (Automatic Background Sync Enabled)
 
 document.addEventListener('DOMContentLoaded', () => {
     const cmdInput = document.getElementById('cmd');
@@ -27,7 +27,7 @@ document.addEventListener('DOMContentLoaded', () => {
     loadTasksFromStorage();
     
     // Boot message
-    echoToTerminal('SYSTEM ONLINE: TermiTask v1.0 [Sequential Push Patch]', '#00ffff');
+    echoToTerminal('SYSTEM ONLINE: TermiTask v1.0 [Auto-Sync Active]', '#00ffff');
     echoToTerminal('Awaiting input... Type tasks to build schedule. Type "help" for options.', '#888888');
 
     // --- Global Error Boundary & Input Loop ---
@@ -231,6 +231,13 @@ document.addEventListener('DOMContentLoaded', () => {
             });
             localStorage.setItem('termitask_csv_cache', csvRows.join('\n'));
 
+            // 3. Automatically trigger background push if GitHub sync is configured
+            const token = localStorage.getItem('termitask_gh_token');
+            const repo = localStorage.getItem('termitask_gh_repo');
+            if (token && repo) {
+                pushStateToGitHub(true); // true = silent/background mode
+            }
+
         } catch (error) {
             console.error("Storage Fault:", error);
             echoToTerminal('[SYSTEM WARNING] Failed to persist tasks to LocalStorage.', '#ff3333');
@@ -273,7 +280,7 @@ document.addEventListener('DOMContentLoaded', () => {
         }
 
         if (subCmd === 'push') {
-            pushStateToGitHub();
+            pushStateToGitHub(false); // Manual push with full feedback
             return;
         }
 
@@ -379,30 +386,42 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }
 
-    async function pushStateToGitHub() {
+    async function pushStateToGitHub(silent = false) {
         const token = localStorage.getItem('termitask_gh_token');
         const repo = localStorage.getItem('termitask_gh_repo');
 
         if (!token || !repo) {
-            echoToTerminal('[ERROR] GitHub sync not configured. Run "sync setup" first.', '#ff3333');
+            if (!silent) {
+                echoToTerminal('[ERROR] GitHub sync not configured. Run "sync setup" first.', '#ff3333');
+            }
             return;
         }
 
-        echoToTerminal('[SYNC] Pushing JSON state & CSV artifact to GitHub...', '#ffb700');
+        if (!silent) {
+            echoToTerminal('[SYNC] Pushing JSON state & CSV artifact to GitHub...', '#ffb700');
+        }
 
         try {
             const timestamp = new Date().toISOString();
             const jsonContent = JSON.stringify(appState.tasks, null, 2);
             const csvContent = localStorage.getItem('termitask_csv_cache') || 'Start,End,Task';
 
-            // Push sequentially to prevent concurrent file tree SHA collisions
-            await pushFileToGitHub('state.json', jsonContent, `TermiTask State Auto-Sync: ${timestamp}`, token, repo);
+            // Sequential push to maintain valid file tree SHAs
+            await pushFileToGitHub('state.json', jsonContent, `TermiTask Auto-Sync: ${timestamp}`, token, repo);
             await pushFileToGitHub('log.csv', csvContent, `TermiTask CSV Artifact Auto-Sync: ${timestamp}`, token, repo);
 
-            echoToTerminal('[SUCCESS] state.json and log.csv successfully pushed to GitHub!', '#00ff66');
+            if (!silent) {
+                echoToTerminal('[SUCCESS] state.json and log.csv successfully pushed to GitHub!', '#00ff66');
+            } else {
+                console.log('[SYNC] Background auto-sync complete.');
+            }
         } catch (error) {
             console.error("GitHub Push Error:", error);
-            echoToTerminal(`[SYNC FAULT] Push failed: ${error.message}`, '#ff3333');
+            if (!silent) {
+                echoToTerminal(`[SYNC FAULT] Push failed: ${error.message}`, '#ff3333');
+            } else {
+                echoToTerminal(`[SYNC BACKGROUND FAULT] ${error.message}`, '#ff3333');
+            }
         }
     }
 
@@ -475,7 +494,7 @@ document.addEventListener('DOMContentLoaded', () => {
         echoToTerminal('    sync                   Check current repository sync status', '#ffffff');
         echoToTerminal('    sync state             View detailed sync diagnostics & storage health', '#ffffff');
         echoToTerminal('    sync setup             Interactive setup wizard for GitHub PAT', '#ffffff');
-        echoToTerminal('    sync push              Upload JSON state & auto-CSV log to repo', '#ffffff');
+        echoToTerminal('    sync push              Manually push JSON state & CSV to repo', '#ffffff');
         echoToTerminal('    sync pull              Download remote state from repo', '#ffffff');
         echoToTerminal('------------------------------------', '#00ffff');
     }
@@ -611,7 +630,7 @@ document.addEventListener('DOMContentLoaded', () => {
             saveTasksToStorage();
             echoToTerminal(`[SUCCESS] Task #${index + 1} ("${removedTask.text}") permanently deleted.`, '#ff3333');
         } else {
-            echoToTerminal(`[CANCELLED] Deletion aborted. Task queue unchanged.`, '#00ff66');
+            echoToTerminal(`[CANCELLED] Deletion aborted. Task queue unchanged.`, '#ff3333');
         }
 
         appState.pendingDeleteIndex = null;
@@ -645,6 +664,10 @@ document.addEventListener('DOMContentLoaded', () => {
             localStorage.removeItem('termitask_queue');
             localStorage.removeItem('termitask_csv_cache');
             echoToTerminal('[SYSTEM] Complete wipe executed. Screen cleared and storage reset.', '#ff3333');
+            // Background push will clear remote files via empty state
+            const token = localStorage.getItem('termitask_gh_token');
+            const repo = localStorage.getItem('termitask_gh_repo');
+            if (token && repo) pushStateToGitHub(true);
         } else if (target === 'screen') {
             outputElement.innerHTML = '';
             echoToTerminal('[SYSTEM] Terminal screen cleared. Queue preserved.', '#ffb700');
