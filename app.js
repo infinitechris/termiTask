@@ -1,4 +1,4 @@
-// app.js - TermiTask Production Line Engine (Fully Synchronized Help & Diagnostics)
+// app.js - TermiTask Production Line Engine (Sequential Push Hotfix)
 
 document.addEventListener('DOMContentLoaded', () => {
     const cmdInput = document.getElementById('cmd');
@@ -27,7 +27,7 @@ document.addEventListener('DOMContentLoaded', () => {
     loadTasksFromStorage();
     
     // Boot message
-    echoToTerminal('SYSTEM ONLINE: TermiTask v1.0 [Fully Synchronized]', '#00ffff');
+    echoToTerminal('SYSTEM ONLINE: TermiTask v1.0 [Sequential Push Patch]', '#00ffff');
     echoToTerminal('Awaiting input... Type tasks to build schedule. Type "help" for options.', '#888888');
 
     // --- Global Error Boundary & Input Loop ---
@@ -233,7 +233,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
         } catch (error) {
             console.error("Storage Fault:", error);
-            echoToTerminal('[SYSTEM WARNING] Failed to persist tasks to LocalStorage.', '#ffb700');
+            echoToTerminal('[SYSTEM WARNING] Failed to persist tasks to LocalStorage.', '#ff3333');
         }
     }
 
@@ -395,10 +395,9 @@ document.addEventListener('DOMContentLoaded', () => {
             const jsonContent = JSON.stringify(appState.tasks, null, 2);
             const csvContent = localStorage.getItem('termitask_csv_cache') || 'Start,End,Task';
 
-            await Promise.all([
-                pushFileToGitHub('state.json', jsonContent, `TermiTask State Auto-Sync: ${timestamp}`, token, repo),
-                pushFileToGitHub('log.csv', csvContent, `TermiTask CSV Artifact Auto-Sync: ${timestamp}`, token, repo)
-            ]);
+            // Push sequentially to prevent concurrent file tree SHA collisions
+            await pushFileToGitHub('state.json', jsonContent, `TermiTask State Auto-Sync: ${timestamp}`, token, repo);
+            await pushFileToGitHub('log.csv', csvContent, `TermiTask CSV Artifact Auto-Sync: ${timestamp}`, token, repo);
 
             echoToTerminal('[SUCCESS] state.json and log.csv successfully pushed to GitHub!', '#00ff66');
         } catch (error) {
@@ -453,7 +452,7 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }
 
-    // --- Station 3 Feature Handler: Help System (Fully Updated) ---
+    // --- Station 3 Feature Handler: Help System ---
     function handleHelpCommand() {
         echoToTerminal('--- TermiTask Command Directory ---', '#00ffff');
         echoToTerminal('  [Task Entry]:', '#ffb700');
