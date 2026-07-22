@@ -1,4 +1,4 @@
-// app.js - TermiTask Production Line Engine (With Sync State Diagnostics)
+// app.js - TermiTask Production Line Engine (Fully Synchronized Help & Diagnostics)
 
 document.addEventListener('DOMContentLoaded', () => {
     const cmdInput = document.getElementById('cmd');
@@ -27,7 +27,7 @@ document.addEventListener('DOMContentLoaded', () => {
     loadTasksFromStorage();
     
     // Boot message
-    echoToTerminal('SYSTEM ONLINE: TermiTask v1.0 [Sync Diagnostics Active]', '#00ffff');
+    echoToTerminal('SYSTEM ONLINE: TermiTask v1.0 [Fully Synchronized]', '#00ffff');
     echoToTerminal('Awaiting input... Type tasks to build schedule. Type "help" for options.', '#888888');
 
     // --- Global Error Boundary & Input Loop ---
@@ -233,7 +233,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
         } catch (error) {
             console.error("Storage Fault:", error);
-            echoToTerminal('[SYSTEM WARNING] Failed to persist tasks to LocalStorage.', '#ff3333');
+            echoToTerminal('[SYSTEM WARNING] Failed to persist tasks to LocalStorage.', '#ffb700');
         }
     }
 
@@ -282,7 +282,6 @@ document.addEventListener('DOMContentLoaded', () => {
             return;
         }
 
-        // New Read-Only Diagnostic Command: sync state
         if (subCmd === 'state') {
             handleSyncStateInspection();
             return;
@@ -454,7 +453,7 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }
 
-    // --- Station 3 Feature Handler: Help System ---
+    // --- Station 3 Feature Handler: Help System (Fully Updated) ---
     function handleHelpCommand() {
         echoToTerminal('--- TermiTask Command Directory ---', '#00ffff');
         echoToTerminal('  [Task Entry]:', '#ffb700');
